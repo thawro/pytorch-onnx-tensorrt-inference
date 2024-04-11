@@ -1,7 +1,5 @@
-import numpy as np
 import tensorrt as trt
 from cuda import cuda, cudart
-from PIL import Image
 
 TRT_MAJOR_VERSION = int(trt.__version__.split(".")[0])
 

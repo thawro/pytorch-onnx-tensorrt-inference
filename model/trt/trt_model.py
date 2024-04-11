@@ -5,10 +5,10 @@ import numpy as np
 import tensorrt as trt
 from cuda import cudart
 
-from model.trt.memory import HostDeviceMem, allocate_buffers, free_buffers
 from utils import measure_time
 
 from ..base import BaseInferenceModel
+from .memory import HostDeviceMem, allocate_buffers, free_buffers
 from .utils import TRT_MAJOR_VERSION, cuda_call
 
 TRT_LOGGER = trt.Logger(trt.Logger.INFO)
