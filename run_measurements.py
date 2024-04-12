@@ -14,9 +14,19 @@ from src.engines import (
 )
 from src.engines.config import EngineConfig
 from src.load import _IMAGENET_CATEGORIES, load_engine_cfg, load_pytorch_module
-from src.monitoring.system import MEMORY_MEASUREMENTS, SystemMetricsMonitor
+from src.monitoring.system import (
+    CKPT_MEMORY_MEASUREMENTS,
+    MEMORY_MEASUREMENTS,
+    SystemMetricsMonitor,
+)
 from src.monitoring.time import TIME_MEASUREMENTS
-from src.utils import load_image, measure_time, save_yaml
+from src.utils import (
+    defaultdict2dict,
+    load_image,
+    measure_time,
+    save_yaml,
+    subtract_init_memory_usage,
+)
 
 IMAGES_FILEPATHS = glob.glob("examples/*")
 
@@ -133,13 +143,6 @@ def test_trt_engine(
     return outputs
 
 
-def ddict2dict(d):
-    for k, v in d.items():
-        if isinstance(v, dict):
-            d[k] = ddict2dict(v)
-    return dict(d)
-
-
 if __name__ == "__main__":
     args = parse_args()
     device = args.device
@@ -178,5 +181,9 @@ if __name__ == "__main__":
     save_yaml(time_measurements, f"{results_dirpath}/{device}_{engine}_latency.yaml")
 
     if device == "cuda":
-        memory_measurements = ddict2dict(MEMORY_MEASUREMENTS)
+        memory_measurements = defaultdict2dict(MEMORY_MEASUREMENTS)
+        ckpt_memory_measurements = defaultdict2dict(CKPT_MEMORY_MEASUREMENTS)
+        memory_measurements = subtract_init_memory_usage(
+            memory_measurements, ckpt_memory_measurements
+        )
         save_yaml(memory_measurements, f"{results_dirpath}/{engine}_gpu_memory.yaml")

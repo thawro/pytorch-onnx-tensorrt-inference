@@ -143,11 +143,7 @@ class SystemMetricsMonitor:
         """Stop monitoring system metrics."""
         if self._process is None:
             return
-        logging.info(f"{self.name_info} Stopping")
+        logging.info(f"{self.name_info} Stopping System Monitor")
         self._shutdown_event.set()
-        try:
-            self._process.join()
-            logging.info(f"{self.name_info}Successfully terminated!")
-        except Exception as e:
-            logging.exception(f"{self.name_info}Error terminating process: {e}.")
+        self._process.join()
         self._process = None

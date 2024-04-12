@@ -1,22 +1,12 @@
 # PyTorch - ONNX - TensorRT inference comparison
 Inference time comparison between **`PyTorch`**, **`ONNX`** and **`TensorRT`** engines
 
-# Latency comparison
+# Latency and Memory comparison
 Run 
 ```bash
-python run_measurements.py --device=<device>
+make measurements
 ```
-to compare the inference times of default model (*resnet152* loaded from torchvision) on specified device.
-
-## CUDA
-```bash
-python run_measurements.py --device="cuda"
-```
-
-## CPU
-```bash
-python run_measurements.py --device="cpu"
-```
+to compare the inference times and memory usage of default model (*resnet152* loaded from torchvision) for all engines and devices.
 
 # Model config
 Model config is used to parse model from `PyTorch` to `ONNX` and from `ONNX` to `TensorRRT`
