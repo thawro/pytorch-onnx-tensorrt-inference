@@ -5,9 +5,8 @@ import numpy as np
 import tensorrt as trt
 from cuda import cudart
 
-from utils import measure_time
-
-from ..base import BaseInferenceModel
+from ...utils import measure_time
+from ..base import BaseInferenceEngine
 from .memory import HostDeviceMem, allocate_buffers, free_buffers
 from .utils import TRT_MAJOR_VERSION, cuda_call
 
@@ -64,9 +63,10 @@ def do_inference(
     return _do_inference_base(inputs, outputs, stream, execute_async_func)
 
 
-class TRTInferenceModel(BaseInferenceModel):
+class TensorRTInferenceEngine(BaseInferenceEngine):
     engine: trt.ICudaEngine
     context: trt.IExecutionContext
+    name: str = "TensorRT"
 
     def allocate_buffers(self):
         # Allocate buffers and create a CUDA stream.
@@ -87,7 +87,7 @@ class TRTInferenceModel(BaseInferenceModel):
         self.stream = stream
         return stream
 
-    def load_engine_from_onnx(self):
+    def load_engine_from_onnx(self, dirpath: str):
         logging.info("-> Loading trt.ICudaEngine from ONNX file")
         builder = trt.Builder(TRT_LOGGER)
         if TRT_MAJOR_VERSION >= 10:
@@ -110,7 +110,7 @@ class TRTInferenceModel(BaseInferenceModel):
 
         # config.set_memory_pool_limit(trt.MemoryPoolType.WORKSPACE, GiB(1))
         # Load the Onnx model and parse it in order to populate the TensorRT network.
-        with open(self.cfg.onnx_filepath, "rb") as model_file:
+        with open(f"{dirpath}/{self.cfg.onnx_filename}", "rb") as model_file:
             logging.info("-> Parsing ONNX file")
             success = parser.parse(model_file.read())
             if not success:
@@ -121,19 +121,18 @@ class TRTInferenceModel(BaseInferenceModel):
                 e = Exception(msgs)
                 logging.exception(e)
                 raise e
-            logging.info("-> ONNX parsed successfully")
-
         engine_bytes = builder.build_serialized_network(network, config)
         runtime = trt.Runtime(TRT_LOGGER)
         self.engine = runtime.deserialize_cuda_engine(engine_bytes)
+        logging.info("-> ONNX parsed successfully")
 
-    def load_engine_from_trt(self, trt_model_filepath: str):
+    def load_engine_from_trt(self, dirpath: str):
         runtime = trt.Runtime(TRT_LOGGER)
-        with open(trt_model_filepath, "rb") as model_file:
+        with open(f"{dirpath}/{self.cfg.trt_filename}", "rb") as model_file:
             self.engine = runtime.deserialize_cuda_engine(model_file.read())
 
-    def save_engine_to_trt(self, trt_model_filepath: str):
-        with open(trt_model_filepath, "wb") as engine_file:
+    def save_engine_to_trt(self, dirpath: str):
+        with open(f"{dirpath}/{self.cfg.trt_filename}", "wb") as engine_file:
             engine_file.write(self.engine.serialize())
 
     def preprocess(self, image: np.ndarray):
@@ -152,7 +151,7 @@ class TRTInferenceModel(BaseInferenceModel):
 
         np.copyto(self.inputs[0].host, normalize(image))
 
-    @measure_time(logging.INFO, time_unit="ms")
+    @measure_time(time_unit="ms", name="TensorRT")
     def inference(
         self, image: np.ndarray, context: trt.IExecutionContext | None = None
     ):

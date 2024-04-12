@@ -32,11 +32,11 @@ class OutputShape:
 @dataclass
 class Input:
     name: str
-    dtype: str
+    dtype_str: str
     shapes: InputShape
 
     def __post_init__(self):
-        self.dtype = getattr(np, self.dtype)
+        self.dtype = getattr(np, self.dtype_str)
 
     @property
     def is_dynamic(self) -> bool:
@@ -50,21 +50,25 @@ class Output:
 
 
 @dataclass
-class ModelConfig:
+class EngineConfig:
     name: str
     inputs: list[Input]
     outputs: list[Output]
 
     def __post_init__(self):
-        self.onnx_filepath = f"{self.name}.onnx"
-        self.trt_filepath = f"{self.name}.engine"
+        self.onnx_filename = f"{self.name}.onnx"
+        self.trt_filename = f"{self.name}.engine"
+
+    def save_to_yaml(self, filepath: str):
+        with open(filepath, "w") as outfile:
+            yaml.dump(asdict(self), outfile)
 
     @property
     def has_dynamic_input(self) -> bool:
         return any([inp.is_dynamic for inp in self.inputs])
 
     @classmethod
-    def from_yaml(cls, filepath: str) -> "ModelConfig":
+    def from_yaml(cls, filepath: str) -> "EngineConfig":
         with open(filepath) as file:
             data = yaml.safe_load(file)
         return from_dict(data_class=cls, data=data)

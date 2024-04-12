@@ -1,26 +1,25 @@
-import logging
-
 import cv2
 import numpy as np
 import onnxruntime as ort
 
-from model.config import ModelConfig
-from utils import measure_time
-
-from .base import BaseInferenceModel
+from ..utils import measure_time
+from .base import BaseInferenceEngine
+from .config import EngineConfig
 
 DEFAULT_PROVIDERS = ["CPUExecutionProvider", "CUDAExecutionProvider"]
 TRT_PROVIDERS = ["TensorrtExecutionProvider", "CUDAExecutionProvider"]
 
 
-class ONNXInferenceModel(BaseInferenceModel):
-    def __init__(self, cfg: ModelConfig, providers: list[str] = DEFAULT_PROVIDERS):
+class ONNXInferenceEngine(BaseInferenceEngine):
+    name: str = "ONNX"
+
+    def __init__(self, cfg: EngineConfig, providers: list[str] = DEFAULT_PROVIDERS):
         super().__init__(cfg)
         self.providers = providers
 
-    def load_session_from_onnx(self):
+    def load_session_from_onnx(self, dirpath: str):
         self.session = ort.InferenceSession(
-            self.cfg.onnx_filepath,
+            f"{dirpath}/{self.cfg.onnx_filename}",
             providers=self.providers,
         )
 
@@ -33,9 +32,9 @@ class ONNXInferenceModel(BaseInferenceModel):
         image_arr = np.expand_dims(image_arr, 0)
         return (image_arr / 255.0 - 0.45) / 0.225
 
-    @measure_time(logging.INFO, time_unit="ms")
+    @measure_time(time_unit="ms", name="ONNX")
     def inference(self, image: np.ndarray):
         model_input = self.preprocess(image)
-        outputs = self.session.run(None, {"input": model_input})
-        probs = outputs[0][0]
+        outputs = self.session.run(None, {self.cfg.inputs[0].name: model_input})[0]
+        probs = outputs[0]
         return probs

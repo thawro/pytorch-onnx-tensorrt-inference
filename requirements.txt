@@ -5,6 +5,9 @@ dacite==1.8.1
 torch==2.1.1
 torchvision==0.16.1
 onnx==1.15.0
-onnxruntime-gpu==1.17.1
+onnxruntime-gpu==1.17.1 # for Cuda 12.x look: https://onnxruntime.ai/docs/install/#install-onnx-runtime-gpu-cuda-12x
 Pillow==9.0.1
 opencv-python==4.9.0.80
+pandas==2.1.4
+seaborn==0.13.0
+matplotlib==3.8.2

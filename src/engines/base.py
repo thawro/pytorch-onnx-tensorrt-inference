@@ -2,11 +2,13 @@ import logging
 
 import numpy as np
 
-from .config import ModelConfig
+from .config import EngineConfig
 
 
-class BaseInferenceModel:
-    def __init__(self, cfg: ModelConfig):
+class BaseInferenceEngine:
+    name: str
+
+    def __init__(self, cfg: EngineConfig):
         self.cfg = cfg
         self.example_input_shapes = [inp.shapes.example for inp in cfg.inputs]
         self.dtypes = [inp.dtype for inp in cfg.inputs]
@@ -24,8 +26,10 @@ class BaseInferenceModel:
             for shape, dtype in zip(self.example_input_shapes, self.dtypes)
         ]
 
-    def warmup(self):
-        logging.warning("WARMUP")
-        for _ in range(100):
+    def warmup(self, n: int):
+        logging.warning(
+            f"-> Performing {self.__class__.__name__} warmup (running inference {n} times)"
+        )
+        for _ in range(n):
             dummy_inputs = self.dummy_inputs
             self.inference(*dummy_inputs)

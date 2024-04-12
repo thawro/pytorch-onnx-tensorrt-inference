@@ -1,20 +1,19 @@
-import logging
-
 import cv2
 import numpy as np
 import torch.onnx
 from torch import nn
 
-from model.config import ModelConfig
-from utils import measure_time
-
-from .base import BaseInferenceModel
+from ..utils import measure_time
+from .base import BaseInferenceEngine
+from .config import EngineConfig
 
 DEFAULT_DEVICE = "cuda"
 
 
-class PytorchInferenceModel(BaseInferenceModel):
-    def __init__(self, cfg: ModelConfig, device: str = DEFAULT_DEVICE):
+class PyTorchInferenceEngine(BaseInferenceEngine):
+    name: str = "PyTorch"
+
+    def __init__(self, cfg: EngineConfig, device: str = DEFAULT_DEVICE):
         super().__init__(cfg)
         self.device = device
 
@@ -23,7 +22,7 @@ class PytorchInferenceModel(BaseInferenceModel):
         self.module.eval()
         self.module.to(self.device)
 
-    def save_to_onnx(self):
+    def save_to_onnx(self, dirpath: str):
         dummy_inputs = [self.preprocess(inp) for inp in self.dummy_inputs]
         dynamic_axes = {}
         for input in self.cfg.inputs:
@@ -48,7 +47,7 @@ class PytorchInferenceModel(BaseInferenceModel):
         torch.onnx.export(
             self.module,
             tuple(dummy_inputs),
-            self.cfg.onnx_filepath,
+            f"{dirpath}/{self.cfg.onnx_filename}",
             export_params=True,  # store the trained parameter weights inside the model file
             do_constant_folding=True,  # whether to execute constant folding for optimization
             input_names=input_names,  # the model's input names
@@ -65,7 +64,7 @@ class PytorchInferenceModel(BaseInferenceModel):
         image_arr = (image_arr / 255.0 - 0.45) / 0.225
         return torch.from_numpy(image_arr).unsqueeze(0).to(self.device)
 
-    @measure_time(logging.INFO, time_unit="ms")
+    @measure_time(time_unit="ms", name="PyTorch")
     def inference(self, image: np.ndarray):
         with torch.no_grad():
             model_input = self.preprocess(image)
