@@ -1,4 +1,5 @@
 from collections import defaultdict
+from pathlib import Path
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -6,8 +7,7 @@ import pandas as pd
 import seaborn as sns
 from scipy.interpolate import interp1d
 
-from ..monitoring.system import CKPT_MEMORY_MEASUREMENTS, MEMORY_MEASUREMENTS
-from ..monitoring.time import TIME_MEASUREMENTS, _time_unit
+from ..monitoring.time import _time_unit
 
 sns.set_style("whitegrid")
 
@@ -41,34 +41,38 @@ def plot_time_measurements(
     fig.savefig(filepath, bbox_inches="tight", dpi=300)
 
 
-def interpolate_memory_to_time(time_unit: _time_unit = "ms", skip_first_n: int = 0):
-    memory_measurements = defaultdict(lambda: defaultdict(list))
-    for method_name, times in TIME_MEASUREMENTS[time_unit].items():
+def interpolate_memory_to_time(
+    time_measurements, memory_measurements, skip_first_n: int = 0
+):
+    _memory_measurements = defaultdict(lambda: defaultdict(list))
+    for method_name, times in time_measurements.items():
         xnew = list(range(len(times)))
-        for stat, values in MEMORY_MEASUREMENTS[method_name].items():
+        for stat, values in memory_measurements[method_name].items():
             x = list(range(len(values)))
             y = values
             interp_fn = interp1d(x, y)
             values_new = interp_fn(xnew)
-            memory_measurements[method_name][stat] = values_new[skip_first_n:]
-    return memory_measurements
+            _memory_measurements[method_name][stat] = values_new[skip_first_n:]
+    return _memory_measurements
 
 
 def plot_gpu_memory_measurements(
-    names: list[str],
-    device: str,
-    time_unit: _time_unit = "ms",
+    cuda_time_measurements,
+    gpu_memory_measurements,
+    ckpt_memory_measurements=None,
     skip_first_n: int = 0,
-    dirpath: str = "memory_measurements.jpg",
+    dirpath: str = ".",
 ):
-    memory_measurements = interpolate_memory_to_time(time_unit, skip_first_n)
-    for engine_name, memory_ckpt_stats in CKPT_MEMORY_MEASUREMENTS.items():
-        init_stats = memory_ckpt_stats["initialized"]
-        # NOTE: remove init value of memory (mb) stats to know how much increased
-        for stat_name, value in init_stats.items():
-            if "mb" in stat_name:
-                memory_measurements[engine_name][stat_name] -= value
-    memory_measurements = {k: v for k, v in memory_measurements.items() if k in names}
+    memory_measurements = interpolate_memory_to_time(
+        cuda_time_measurements, gpu_memory_measurements, skip_first_n
+    )
+    if ckpt_memory_measurements is not None:
+        for engine_name, memory_ckpt_stats in ckpt_memory_measurements.items():
+            init_stats = memory_ckpt_stats["initialized"]
+            # NOTE: remove init value of memory (mb) stats to know how much increased
+            for stat_name, value in init_stats.items():
+                if "mb" in stat_name:
+                    memory_measurements[engine_name][stat_name] -= value
     gpu_0_mb_measurements = {
         engine_name: memory_stats["gpu_0_mb"]
         for engine_name, memory_stats in memory_measurements.items()
@@ -94,16 +98,29 @@ def plot_gpu_memory_measurements(
         axes[1].set_xlabel("Index", fontsize=14)
         axes[1].set_ylabel(name, fontsize=14)
 
-        fig.savefig(
-            f"{dirpath}/{device}_{name}_measurements.jpg", bbox_inches="tight", dpi=300
-        )
+        fig.savefig(f"{dirpath}/{name}_measurements.jpg", bbox_inches="tight", dpi=300)
 
 
-def plot_measurements(dirpath: str, cuda_time_measurements, cpu_time_measurements):
+def plot_measurements(
+    dirpath: str,
+    skip_first_n,
+    cuda_time_measurements,
+    cpu_time_measurements,
+    gpu_memory_measurements,
+):
+    Path(dirpath).mkdir(exist_ok=True, parents=True)
+    plot_gpu_memory_measurements(
+        cuda_time_measurements, gpu_memory_measurements, None, skip_first_n, dirpath
+    )
+    cuda_time_measurements = {
+        k: v[skip_first_n:] for k, v in cuda_time_measurements.items()
+    }
+    cpu_time_measurements = {
+        k: v[skip_first_n:] for k, v in cpu_time_measurements.items()
+    }
     plot_time_measurements(
         cuda_time_measurements, filepath=f"{dirpath}/cuda_time_measurements.jpg"
     )
     plot_time_measurements(
         cpu_time_measurements, filepath=f"{dirpath}/cpu_time_measurements.jpg"
     )
-    # plot_gpu_memory_measurements(names, device, time_unit, skip_first_n, dirpath)

@@ -1,5 +1,5 @@
 run_measurements:
-	python3 prepare_engine_files.py
+	# python3 prepare_engine_files.py
 	python3 run_measurements.py --device="cuda" --engine="TensorRT"
 	python3 run_measurements.py --device="cuda" --engine="ONNX"
 	python3 run_measurements.py --device="cuda" --engine="PyTorch"

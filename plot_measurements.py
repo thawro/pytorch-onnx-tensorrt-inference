@@ -1,21 +1,11 @@
-import logging
-import time
-from pathlib import Path
-
-import numpy as np
-
 from run_measurements import MODELS_DIR, NUM_INFERENCE_ITER, NUM_WARMUP_ITER
 from src.engines import (
-    BaseInferenceEngine,
     ONNXInferenceEngine,
     PyTorchInferenceEngine,
     TensorRTInferenceEngine,
 )
-from src.engines.config import EngineConfig
 from src.load import load_engine_cfg
-from src.monitoring.system import MEMORY_MEASUREMENTS, SystemMetricsMonitor
-from src.monitoring.time import TIME_MEASUREMENTS
-from src.utils import load_image, load_yaml, measure_time
+from src.utils import load_yaml
 from src.utils.visualization import plot_measurements
 
 if __name__ == "__main__":
@@ -28,23 +18,26 @@ if __name__ == "__main__":
     ]
     cuda_time_measurements = {}
     for name in names:
-        dct = load_yaml(f"{model_dirpath}/cuda_{name}_latency.yaml")
+        dct = load_yaml(f"{model_dirpath}/results/cuda_{name}_latency.yaml")
         cuda_time_measurements.update(dct)
-    cuda_time_measurements = {
-        k: v[NUM_WARMUP_ITER:] for k, v in cuda_time_measurements.items()
-    }
+
+    gpu_memory_measurements = {}
+    for name in names:
+        dct = load_yaml(f"{model_dirpath}/results/{name}_gpu_memory.yaml")
+        gpu_memory_measurements.update(dct)
 
     cpu_time_measurements = {}
-    # for name in names:
-    #     dct = load_yaml(f"{model_dirpath}/cpu_{name}_latency.yaml")
-    #     cpu_time_measurements.update(dct)
-    # print(cpu_time_measurements)
-    cpu_time_measurements = {
-        k: v[NUM_WARMUP_ITER:] for k, v in cpu_time_measurements.items()
-    }
+    for name in names:
+        if name == "TensorRT":
+            continue
+        dct = load_yaml(f"{model_dirpath}/results/cpu_{name}_latency.yaml")
+        cpu_time_measurements.update(dct)
+    print(cpu_time_measurements)
 
     plot_measurements(
-        model_dirpath,
+        f"{model_dirpath}/plots",
+        NUM_WARMUP_ITER,
         cuda_time_measurements,
         cpu_time_measurements,
+        gpu_memory_measurements,
     )
