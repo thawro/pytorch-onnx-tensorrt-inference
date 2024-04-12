@@ -96,19 +96,25 @@ def test_onnx_model(
     n: int = 100,
 ) -> list[tuple]:
     logging.info(" ONNX ".center(120, "="))
-
-    pytorch_engine = PyTorchInferenceEngine(engine_cfg, device=device)
-    pytorch_engine.load_module(module, device="cpu")
-    pytorch_engine.save_to_onnx(model_dirpath)
-    pytorch_engine.free_buffers()
-    del pytorch_engine
-
     providers = (
         ["CPUExecutionProvider"] if device == "cpu" else ["CUDAExecutionProvider"]
     )
+
     onnx_engine = ONNXInferenceEngine(engine_cfg, providers=providers)
-    system_monitor = SystemMetricsMonitor(name=onnx_engine.name)
-    onnx_engine.load_session_from_onnx(model_dirpath)
+
+    if os.path.exists(f"{model_dirpath}/{engine_cfg.onnx_filename}"):
+        system_monitor = SystemMetricsMonitor(name=onnx_engine.name)
+        onnx_engine.load_session_from_onnx(model_dirpath)
+    else:
+        pytorch_engine = PyTorchInferenceEngine(engine_cfg, device=device)
+        pytorch_engine.load_module(module, device="cpu")
+        pytorch_engine.save_to_onnx(model_dirpath)
+        pytorch_engine.free_buffers()
+        del pytorch_engine
+
+        system_monitor = SystemMetricsMonitor(name=onnx_engine.name)
+        onnx_engine.load_session_from_onnx(model_dirpath)
+
     system_monitor.checkpoint_metrics("loaded_engine")
     onnx_engine.allocate_buffers()
     system_monitor.checkpoint_metrics("allocated_buffers")
@@ -129,17 +135,20 @@ def test_trt_model(
         logging.exception(e)
         return []
 
-    pytorch_engine = PyTorchInferenceEngine(engine_cfg, device=device)
-    pytorch_engine.load_module(module, device="cpu")
-    pytorch_engine.save_to_onnx(model_dirpath)
-    pytorch_engine.free_buffers()
-    del pytorch_engine
-
     trt_engine = TensorRTInferenceEngine(engine_cfg)
-    system_monitor = SystemMetricsMonitor(name=trt_engine.name)
-    trt_engine.load_engine_from_onnx(model_dirpath)
-    # trt_engine.save_engine_to_trt(model_dirpath)
-    # trt_engine.load_engine_from_trt(model_dirpath)
+    if os.path.exists(f"{model_dirpath}/{engine_cfg.trt_filename}"):
+        system_monitor = SystemMetricsMonitor(name=trt_engine.name)
+        trt_engine.load_engine_from_trt(model_dirpath)
+    else:
+        pytorch_engine = PyTorchInferenceEngine(engine_cfg, device=device)
+        pytorch_engine.load_module(module, device="cpu")
+        pytorch_engine.save_to_onnx(model_dirpath)
+        pytorch_engine.free_buffers()
+        del pytorch_engine
+        system_monitor = SystemMetricsMonitor(name=trt_engine.name)
+        trt_engine.load_engine_from_onnx(model_dirpath)
+        trt_engine.save_engine_to_trt(model_dirpath)
+
     system_monitor.checkpoint_metrics("loaded_engine")
     input_cfg = engine_cfg.inputs[0]
     h, w, c = input_cfg.shapes.example
@@ -172,18 +181,18 @@ if __name__ == "__main__":
 
     params = dict(module=module, n=N, image=image, engine_cfg=engine_cfg, device=device)
 
-    pytorch_outputs = test_pytorch_model(**params)
-    onnx_outputs = test_onnx_model(**params)
     trt_outputs = test_trt_model(**params)
+    onnx_outputs = test_onnx_model(**params)
+    pytorch_outputs = test_pytorch_model(**params)
 
     logging.info(
         " Parsed engines outputs ([<label_idx>, <label>, <label_prob>]) ".center(
             120, "="
         )
     )
-    print(f"PyTorch: {pytorch_outputs}\n")
-    print(f"ONNX: {onnx_outputs}\n")
-    print(f"TensorRT: {trt_outputs}\n")
+    # print(f"PyTorch: {pytorch_outputs}\n")
+    # print(f"ONNX: {onnx_outputs}\n")
+    # print(f"TensorRT: {trt_outputs}\n")
     plot_measurements(
         names=[
             PyTorchInferenceEngine.name,

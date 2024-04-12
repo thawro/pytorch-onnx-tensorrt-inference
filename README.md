@@ -68,12 +68,8 @@ outputs:
 ### Latency
 ![cuda_latency](./models/resnet152/cuda_time_measurements.jpg)
 
-### GPU Memory (VRAM) [mb]
-![cuda_mb](./models/resnet152/cuda_gpu_mb_measurements.jpg)
-
-### GPU utilisation [%]
-![cuda_util](./models/resnet152/cuda_gpu_util_measurements.jpg)
-
+### GPU Memory (VRAM) [mb] and utilisation [%] 
+> NOTE: it is advised to run GPU memory/utilisation checks for each engine separately 
 
 ## CPU
 
