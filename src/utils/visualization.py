@@ -13,18 +13,12 @@ sns.set_style("whitegrid")
 
 
 def plot_time_measurements(
-    names: list[str],
+    time_measurements,
     time_unit: _time_unit = "ms",
-    skip_first_n: int = 0,
     fill_outliers_with_nan: bool = True,
     filepath: str = "time_measurements.jpg",
 ):
-    times = {
-        k: v[skip_first_n:]
-        for k, v in TIME_MEASUREMENTS[time_unit].items()
-        if k in names
-    }
-    df = pd.DataFrame.from_dict(times)
+    df = pd.DataFrame.from_dict(time_measurements)
     if fill_outliers_with_nan:
         for col in df.columns:
             q_low = df[col].quantile(0.01)
@@ -105,21 +99,11 @@ def plot_gpu_memory_measurements(
         )
 
 
-def plot_measurements(
-    names: list[str],
-    device: str,
-    time_unit: _time_unit = "ms",
-    skip_first_n: int = 0,
-    fill_outliers_with_nan: bool = True,
-    dirpath: str = ".",
-):
+def plot_measurements(dirpath: str, cuda_time_measurements, cpu_time_measurements):
     plot_time_measurements(
-        names,
-        time_unit,
-        skip_first_n,
-        fill_outliers_with_nan,
-        filepath=f"{dirpath}/{device}_time_measurements.jpg",
+        cuda_time_measurements, filepath=f"{dirpath}/cuda_time_measurements.jpg"
     )
-    if device == "cpu":
-        return
-    plot_gpu_memory_measurements(names, device, time_unit, skip_first_n, dirpath)
+    plot_time_measurements(
+        cpu_time_measurements, filepath=f"{dirpath}/cpu_time_measurements.jpg"
+    )
+    # plot_gpu_memory_measurements(names, device, time_unit, skip_first_n, dirpath)
