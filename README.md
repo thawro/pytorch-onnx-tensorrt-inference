@@ -64,8 +64,18 @@ outputs:
 ```
 
 ## CUDA
-![cuda_latency](./models/resnet152/cuda_measurements.jpg)
+
+### Latency
+![cuda_latency](./models/resnet152/cuda_time_measurements.jpg)
+
+### GPU Memory (VRAM) [mb]
+![cuda_mb](./models/resnet152/cuda_gpu_mb_measurements.jpg)
+
+### GPU utilisation [%]
+![cuda_util](./models/resnet152/cuda_gpu_util_measurements.jpg)
 
 
 ## CPU
-![cuda_latency](./models/resnet152/cpu_measurements.jpg)
+
+### Latency
+![cpu_latency](./models/resnet152/cpu_time_measurements.jpg)

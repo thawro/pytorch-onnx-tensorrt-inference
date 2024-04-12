@@ -1,5 +1,7 @@
 import glob
 import logging
+import os
+import time
 from argparse import ArgumentParser, Namespace
 from pathlib import Path
 
@@ -20,7 +22,9 @@ from src.engines import (
     TensorRTInferenceEngine,
 )
 from src.engines.config import EngineConfig
-from src.utils import load_image, measure_time, plot_time_measurements
+from src.monitoring.system import SystemMetricsMonitor
+from src.utils import load_image, measure_time
+from src.utils.visualization import plot_measurements
 
 IMAGES_FILEPATHS = glob.glob("examples/*")
 
@@ -42,62 +46,80 @@ def parse_args() -> Namespace:
 
 
 def run_inference_n_times(
-    model: BaseInferenceEngine, image: np.ndarray, n: int = 1000
+    engine: BaseInferenceEngine,
+    image: np.ndarray,
+    system_monitor: SystemMetricsMonitor,
+    n: int = 1000,
 ) -> list[tuple]:
     @measure_time(time_unit="ms")
-    def _run_inference() -> list[tuple]:
+    def _run_inference_n_times() -> list[tuple]:
         outputs = []
         for i in range(n):
-            probs = model.inference(image)
+            probs = engine.inference(image)
             label_idx = np.argmax(probs)
             label = _IMAGENET_CATEGORIES[label_idx]
             label_prob = probs[label_idx]
             outputs.append((label_idx, label, round(label_prob, 2)))
         return outputs
 
-    model.warmup(WARMUP)
-    return _run_inference()
+    time.sleep(1)
+    system_monitor.start()
+    engine.warmup(WARMUP)
+    outputs = _run_inference_n_times()
+    system_monitor.finish()
+    engine.free_buffers()
+    time.sleep(1)
+    return outputs
 
 
 def test_pytorch_model(
     module: nn.Module,
     image: np.ndarray,
-    model_cfg: EngineConfig,
+    engine_cfg: EngineConfig,
     device: str,
     n: int = 100,
 ) -> list[tuple]:
     logging.info(" PyTorch ".center(120, "="))
-    model = PyTorchInferenceEngine(model_cfg, device=device)
-    model.load_module(module)
-    outputs = run_inference_n_times(model, image, n=n)
+    model = PyTorchInferenceEngine(engine_cfg, device=device)
+    system_monitor = SystemMetricsMonitor(name=model.name)
+    model.load_module(module, device=device)
+    system_monitor.checkpoint_metrics("loaded_engine")
+    outputs = run_inference_n_times(model, image, system_monitor, n=n)
     return outputs
 
 
 def test_onnx_model(
     module: nn.Module,
     image: np.ndarray,
-    model_cfg: EngineConfig,
+    engine_cfg: EngineConfig,
     device: str,
     n: int = 100,
 ) -> list[tuple]:
     logging.info(" ONNX ".center(120, "="))
-    pytorch_model = PyTorchInferenceEngine(model_cfg, device=device)
-    pytorch_model.load_module(module)
-    pytorch_model.save_to_onnx(model_dirpath)
+
+    pytorch_engine = PyTorchInferenceEngine(engine_cfg, device=device)
+    pytorch_engine.load_module(module, device="cpu")
+    pytorch_engine.save_to_onnx(model_dirpath)
+    pytorch_engine.free_buffers()
+    del pytorch_engine
 
     providers = (
         ["CPUExecutionProvider"] if device == "cpu" else ["CUDAExecutionProvider"]
     )
-    model = ONNXInferenceEngine(model_cfg, providers=providers)
-    model.load_session_from_onnx(model_dirpath)
-    outputs = run_inference_n_times(model, image, n=n)
+    onnx_engine = ONNXInferenceEngine(engine_cfg, providers=providers)
+    system_monitor = SystemMetricsMonitor(name=onnx_engine.name)
+    onnx_engine.load_session_from_onnx(model_dirpath)
+    system_monitor.checkpoint_metrics("loaded_engine")
+    onnx_engine.allocate_buffers()
+    system_monitor.checkpoint_metrics("allocated_buffers")
+    outputs = run_inference_n_times(onnx_engine, image, system_monitor, n=n)
     return outputs
 
 
 def test_trt_model(
     module: nn.Module,
     image: np.ndarray,
-    model_cfg: EngineConfig,
+    engine_cfg: EngineConfig,
     device: str,
     n: int = 100,
 ) -> list[tuple]:
@@ -106,27 +128,28 @@ def test_trt_model(
         e = ValueError("TensorRT doesn't support CPU device. Returning None")
         logging.exception(e)
         return []
-    pytorch_model = PyTorchInferenceEngine(model_cfg, device=device)
-    pytorch_model.load_module(module)
-    pytorch_model.save_to_onnx(model_dirpath)
 
-    model = TensorRTInferenceEngine(model_cfg)
-    model.load_engine_from_onnx(model_dirpath)
-    # try:
-    #     model.load_engine_from_trt()
-    # except FileNotFoundError as e:
-    #     logging.warning(e)
-    #     model.load_engine_from_onnx()
-    #     model.save_engine_to_trt()
-    input_cfg = model_cfg.inputs[0]
+    pytorch_engine = PyTorchInferenceEngine(engine_cfg, device=device)
+    pytorch_engine.load_module(module, device="cpu")
+    pytorch_engine.save_to_onnx(model_dirpath)
+    pytorch_engine.free_buffers()
+    del pytorch_engine
+
+    trt_engine = TensorRTInferenceEngine(engine_cfg)
+    system_monitor = SystemMetricsMonitor(name=trt_engine.name)
+    trt_engine.load_engine_from_onnx(model_dirpath)
+    # trt_engine.save_engine_to_trt(model_dirpath)
+    # trt_engine.load_engine_from_trt(model_dirpath)
+    system_monitor.checkpoint_metrics("loaded_engine")
+    input_cfg = engine_cfg.inputs[0]
     h, w, c = input_cfg.shapes.example
-    context = model.create_context()
-    stream = model.create_stream()
+    context = trt_engine.create_context()
+    stream = trt_engine.create_stream()
     context.set_optimization_profile_async(0, stream)
     context.set_input_shape(input_cfg.name, (1, c, h, w))
-    model.allocate_buffers()
-    outputs = run_inference_n_times(model, image, n=n)
-    model.free_buffers()
+    trt_engine.allocate_buffers()
+    system_monitor.checkpoint_metrics("allocated_buffers")
+    outputs = run_inference_n_times(trt_engine, image, system_monitor, n=n)
     return outputs
 
 
@@ -134,11 +157,11 @@ if __name__ == "__main__":
     args = parse_args()
     device = args.device
 
-    model_cfg = EngineConfig.from_yaml("model_config.yaml")
+    engine_cfg = EngineConfig.from_yaml("model_config.yaml")
 
-    model_dirpath = f"{MODELS_DIR}/{model_cfg.name}"
+    model_dirpath = f"{MODELS_DIR}/{engine_cfg.name}"
     Path(model_dirpath).mkdir(exist_ok=True, parents=True)
-    model_cfg.save_to_yaml(f"{model_dirpath}/config.yaml")
+    engine_cfg.save_to_yaml(f"{model_dirpath}/config.yaml")
 
     image_filepath = IMAGES_FILEPATHS[0]
     image = load_image(image_filepath)
@@ -147,7 +170,7 @@ if __name__ == "__main__":
     module.fc = nn.Sequential(*[module.fc, nn.Softmax()])  # logits -> probs
     module.eval()
 
-    params = dict(module=module, n=N, image=image, model_cfg=model_cfg, device=device)
+    params = dict(module=module, n=N, image=image, engine_cfg=engine_cfg, device=device)
 
     pytorch_outputs = test_pytorch_model(**params)
     onnx_outputs = test_onnx_model(**params)
@@ -158,10 +181,10 @@ if __name__ == "__main__":
             120, "="
         )
     )
-    print(f"PyTorch: {pytorch_outputs[WARMUP:WARMUP+10]}\n")
-    print(f"ONNX: {onnx_outputs[WARMUP:WARMUP+10]}\n")
-    print(f"TensorRT: {trt_outputs[WARMUP:WARMUP+10]}\n")
-    plot_time_measurements(
+    print(f"PyTorch: {pytorch_outputs}\n")
+    print(f"ONNX: {onnx_outputs}\n")
+    print(f"TensorRT: {trt_outputs}\n")
+    plot_measurements(
         names=[
             PyTorchInferenceEngine.name,
             ONNXInferenceEngine.name,
@@ -169,5 +192,6 @@ if __name__ == "__main__":
         ],
         time_unit="ms",
         skip_first_n=WARMUP,
-        filepath=f"models/{model_cfg.name}/{device}_measurements.jpg",
+        device=device,
+        dirpath=f"models/{engine_cfg.name}",
     )

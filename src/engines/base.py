@@ -33,3 +33,6 @@ class BaseInferenceEngine:
         for _ in range(n):
             dummy_inputs = self.dummy_inputs
             self.inference(*dummy_inputs)
+
+    def free_buffers(self):
+        raise NotImplementedError()

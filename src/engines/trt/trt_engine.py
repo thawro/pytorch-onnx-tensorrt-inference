@@ -19,22 +19,21 @@ dtypes = {np.float32: trt.float32}
 def _do_inference_base(inputs, outputs, stream, execute_async_func):
     # Transfer input data to the GPU.
     kind = cudart.cudaMemcpyKind.cudaMemcpyHostToDevice
-    [
+    for inp in inputs:
         cuda_call(
             cudart.cudaMemcpyAsync(inp.device, inp.host, inp.nbytes, kind, stream)
         )
-        for inp in inputs
-    ]
+
     # Run inference.
     execute_async_func()
     # Transfer predictions back from the GPU.
     kind = cudart.cudaMemcpyKind.cudaMemcpyDeviceToHost
-    [
+
+    for out in outputs:
         cuda_call(
             cudart.cudaMemcpyAsync(out.host, out.device, out.nbytes, kind, stream)
         )
-        for out in outputs
-    ]
+
     # Synchronize the stream
     cuda_call(cudart.cudaStreamSynchronize(stream))
     # Return only the host outputs.
