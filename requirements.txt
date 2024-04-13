@@ -11,3 +11,5 @@ opencv-python==4.9.0.80
 pandas==2.1.4
 seaborn==0.13.0
 matplotlib==3.8.2
+kornia==0.7.2
+psutil==5.9.6

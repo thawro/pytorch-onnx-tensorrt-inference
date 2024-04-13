@@ -48,6 +48,10 @@ class Output:
     name: str
     shape: OutputShape
 
+    @property
+    def is_dynamic(self) -> bool:
+        return -1 in self.shape.runtime
+
 
 @dataclass
 class EngineConfig:

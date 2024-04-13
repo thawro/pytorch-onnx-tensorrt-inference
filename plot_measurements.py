@@ -1,6 +1,6 @@
 import logging
 
-from run_measurements import NUM_WARMUP_ITER, RESULTS_DIR
+from run_measurements import RESULTS_DIR
 from src.engines import (
     ONNXInferenceEngine,
     PyTorchInferenceEngine,
@@ -44,7 +44,7 @@ if __name__ == "__main__":
 
     plot_measurements(
         f"{model_dirpath}/plots",
-        NUM_WARMUP_ITER,
+        args.num_warmup_iter,
         cuda_time_measurements,
         cpu_time_measurements,
         gpu_memory_measurements,

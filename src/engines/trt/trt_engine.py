@@ -1,6 +1,5 @@
 import logging
 
-import cv2
 import numpy as np
 import tensorrt as trt
 from cuda import cudart
@@ -134,30 +133,19 @@ class TensorRTInferenceEngine(BaseInferenceEngine):
         with open(f"{dirpath}/{self.cfg.trt_filename}", "wb") as engine_file:
             engine_file.write(self.engine.serialize())
 
-    def preprocess(self, image: np.ndarray):
-        # Load a normalized test case into the host input page-locked buffer.
-        # Normalize the image and copy to pagelocked memory.
-        def normalize(image: np.ndarray):
-            h, w, c = self.example_input_shapes[0]
-            dtype = self.dtypes[0]
-            image_arr = (
-                np.asarray(cv2.resize(image, (w, h)))
-                .transpose([2, 0, 1])
-                .astype(dtype)
-                .ravel()
-            )
-            return (image_arr / 255.0 - 0.45) / 0.225
-
-        np.copyto(self.inputs[0].host, normalize(image))
+    def move_inputs_to_device(self, inputs: list[np.ndarray]):
+        for i, inp in enumerate(inputs):
+            np.copyto(self.inputs[i].host, inp.ravel())
 
     @measure_time(time_unit="ms", name="TensorRT")
     def inference(
-        self, image: np.ndarray, context: trt.IExecutionContext | None = None
+        self, inputs: list[np.ndarray], context: trt.IExecutionContext | None = None
     ):
         if context is None:
             context = self.context
 
-        self.preprocess(image)
+        preprocessed_inputs = self.preprocess_inputs(inputs)
+        self.move_inputs_to_device(preprocessed_inputs)
 
         outputs = do_inference(
             context=context,

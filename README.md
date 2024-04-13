@@ -4,7 +4,7 @@ Inference time comparison between **`PyTorch`**, **`ONNX`** and **`TensorRT`** e
 # Latency and Memory comparison
 Run 
 ```bash
-make measurements model_name="resnet152"
+make measurements model_name="resnet152" num_iter=100 num_warmup_iter=10
 ```
 to compare the inference times and memory usage of default model (*resnet152* loaded from torchvision) for all engines and devices.
 

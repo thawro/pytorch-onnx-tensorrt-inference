@@ -1,4 +1,3 @@
-import cv2
 import numpy as np
 import torch.onnx
 from torch import nn
@@ -25,7 +24,8 @@ class PyTorchInferenceEngine(BaseInferenceEngine):
         self.module.to(device)
 
     def save_to_onnx(self, dirpath: str):
-        dummy_inputs = [self.preprocess(inp) for inp in self.dummy_inputs]
+        dummy_inputs = self.preprocess_inputs(self.dummy_inputs)
+        dummy_inputs = self.move_inputs_to_device(dummy_inputs)
         dynamic_axes = {}
         for input in self.cfg.inputs:
             input_dynamic_axes = {}
@@ -57,21 +57,16 @@ class PyTorchInferenceEngine(BaseInferenceEngine):
         )
         torch.cuda.empty_cache()
 
-    def preprocess(self, image: np.ndarray) -> torch.Tensor:
-        h, w, c = self.example_input_shapes[0]
-        dtype = self.dtypes[0]
-        image_arr = (
-            np.asarray(cv2.resize(image, (w, h))).transpose([2, 0, 1]).astype(dtype)
-        )
-        image_arr = (image_arr / 255.0 - 0.45) / 0.225
+    def move_inputs_to_device(self, inputs: list[np.ndarray]):
         device = next(self.module.parameters()).device
-        return torch.from_numpy(image_arr).unsqueeze(0).to(device)
+        return [torch.from_numpy(inp).to(device) for inp in inputs]
 
     @measure_time(time_unit="ms", name="PyTorch")
-    def inference(self, image: np.ndarray):
+    def inference(self, inputs: list[np.ndarray]):
         with torch.no_grad():
-            model_input = self.preprocess(image)
-            probs = self.module(model_input)[0].cpu().numpy()
+            preprocessed_inputs = self.preprocess_inputs(inputs)
+            inputs_on_device = self.move_inputs_to_device(preprocessed_inputs)
+            probs = self.module(*inputs_on_device)[0].cpu().numpy()
         return probs
 
     def free_buffers(self):

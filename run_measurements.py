@@ -1,7 +1,6 @@
 import glob
 import logging
 import time
-from argparse import ArgumentParser, Namespace
 from pathlib import Path
 
 import numpy as np
@@ -31,9 +30,6 @@ from src.utils.args import parse_args
 
 IMAGES_FILEPATHS = glob.glob("examples/*")
 
-NUM_WARMUP_ITER = 100
-NUM_INFERENCE_ITER = 1000
-
 RESULTS_DIR = "measurements_results"
 
 
@@ -44,22 +40,23 @@ def run_inference_n_times(
 ) -> list[tuple]:
     @measure_time(time_unit="ms")
     def _run_inference_n_times() -> list[tuple]:
-        outputs = []
-        for i in range(NUM_INFERENCE_ITER):
-            probs = engine.inference(image)
-            label_idx = np.argmax(probs)
-            label_prob = probs[label_idx]
-            outputs.append((label_idx, round(label_prob, 2)))
-        return outputs
+        outputs_avg = []
+        for i in range(args.num_iter):
+            inputs = [image]
+            # other = np.random.random((6,)).astype(np.float32)
+            # inputs = [image, other]
+            outputs = engine.inference(inputs)
+            outputs_avg.append(outputs.mean())
+        return outputs_avg
 
     time.sleep(1)
     system_monitor.start()
-    engine.warmup(NUM_WARMUP_ITER)
-    outputs = _run_inference_n_times()
+    engine.warmup(args.num_warmup_iter)
+    out = _run_inference_n_times()
     system_monitor.finish()
     engine.free_buffers()
     time.sleep(1)
-    return outputs
+    return out
 
 
 def test_pytorch_engine(

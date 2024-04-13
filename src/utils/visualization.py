@@ -50,7 +50,7 @@ def interpolate_memory_to_time(
         for stat, values in memory_measurements[method_name].items():
             x = list(range(len(values)))
             y = values
-            interp_fn = interp1d(x, y)
+            interp_fn = interp1d(x, y, fill_value="extrapolate")
             values_new = interp_fn(xnew)
             _memory_measurements[method_name][stat] = values_new[skip_first_n:]
     return _memory_measurements

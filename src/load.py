@@ -2,14 +2,18 @@ from typing import Literal
 
 from torch import nn
 
+import models.encoder.load as model_encoder
+import models.localizer.load as model_localizer
 import models.resnet152.load as model_resnet_152
 from src.engines.config import EngineConfig
 
-_model_name = Literal["resnet152"]
+_model_name = Literal["resnet152", "localizer", "encoder"]
 
 
 model2module = {
     "resnet152": model_resnet_152,
+    "localizer": model_localizer,
+    "encoder": model_encoder,
 }
 
 
