@@ -1,22 +1,25 @@
-from torch import nn
-from torchvision.models.resnet import (
-    _IMAGENET_CATEGORIES,
-    ResNet50_Weights,
-    ResNet152_Weights,
-    resnet50,
-    resnet152,
-)
+from typing import Literal
 
+from torch import nn
+
+import models.resnet152.load as model_resnet_152
 from src.engines.config import EngineConfig
 
-
-def load_pytorch_module() -> nn.Module:
-    module = resnet152(weights=ResNet152_Weights.DEFAULT)
-    module.fc = nn.Sequential(*[module.fc, nn.Softmax()])  # logits -> probs
-    module.eval()
-    return module
+_model_name = Literal["resnet152"]
 
 
-def load_engine_cfg() -> EngineConfig:
-    engine_cfg = EngineConfig.from_yaml("model_config.yaml")
+model2module = {
+    "resnet152": model_resnet_152,
+}
+
+
+def load_engine_cfg(model_name: _model_name) -> EngineConfig:
+    python_module = model2module[model_name]
+    engine_cfg = python_module.load_engine_cfg()
     return engine_cfg
+
+
+def load_pytorch_module(model_name: _model_name) -> nn.Module:
+    python_module = model2module[model_name]
+    pytorch_module = python_module.load_pytorch_module()
+    return pytorch_module

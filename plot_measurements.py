@@ -1,4 +1,6 @@
-from run_measurements import MODELS_DIR, NUM_INFERENCE_ITER, NUM_WARMUP_ITER
+import logging
+
+from run_measurements import NUM_WARMUP_ITER, RESULTS_DIR
 from src.engines import (
     ONNXInferenceEngine,
     PyTorchInferenceEngine,
@@ -6,11 +8,17 @@ from src.engines import (
 )
 from src.load import load_engine_cfg
 from src.utils import load_yaml
+from src.utils.args import parse_args
 from src.utils.visualization import plot_measurements
 
 if __name__ == "__main__":
-    engine_cfg = load_engine_cfg()
-    model_dirpath = f"{MODELS_DIR}/{engine_cfg.name}"
+    args = parse_args()
+    logging.info(f"-> Plotting measurements for args: \n{args}")
+
+    model_name = args.model_name
+
+    engine_cfg = load_engine_cfg(model_name)
+    model_dirpath = f"{RESULTS_DIR}/{engine_cfg.name}"
     names = [
         PyTorchInferenceEngine.name,
         ONNXInferenceEngine.name,

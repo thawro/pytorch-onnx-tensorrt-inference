@@ -3,11 +3,11 @@ from pathlib import Path
 
 from torch import nn
 
+from run_measurements import RESULTS_DIR
 from src.engines import PyTorchInferenceEngine, TensorRTInferenceEngine
 from src.engines.config import EngineConfig
-from src.load import load_pytorch_module
-
-MODELS_DIR = "models"
+from src.load import load_engine_cfg, load_pytorch_module
+from src.utils.args import parse_args
 
 
 def save_onnx_engine(module: nn.Module, engine_cfg: EngineConfig):
@@ -37,15 +37,17 @@ def save_trt_engine(module: nn.Module, engine_cfg: EngineConfig):
 
 
 if __name__ == "__main__":
-    module = load_pytorch_module()
+    args = parse_args()
+    logging.info(f"-> Preparing engines for arguments: \n{args}")
+    model_name = args.model_name
+    engine_cfg = load_engine_cfg(model_name)
+    pytorch_module = load_pytorch_module(model_name)
 
-    engine_cfg = EngineConfig.from_yaml("model_config.yaml")
-
-    model_dirpath = f"{MODELS_DIR}/{engine_cfg.name}"
+    model_dirpath = f"{RESULTS_DIR}/{engine_cfg.name}"
     Path(model_dirpath).mkdir(exist_ok=True, parents=True)
     engine_cfg.save_to_yaml(f"{model_dirpath}/config.yaml")
 
-    save_onnx_engine(module=module, engine_cfg=engine_cfg)
-    save_trt_engine(module=module, engine_cfg=engine_cfg)
+    save_onnx_engine(module=pytorch_module, engine_cfg=engine_cfg)
+    save_trt_engine(module=pytorch_module, engine_cfg=engine_cfg)
 
     logging.info(" Saved Engines ".center(120, "="))

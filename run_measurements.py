@@ -13,7 +13,7 @@ from src.engines import (
     TensorRTInferenceEngine,
 )
 from src.engines.config import EngineConfig
-from src.load import _IMAGENET_CATEGORIES, load_engine_cfg, load_pytorch_module
+from src.load import load_engine_cfg, load_pytorch_module
 from src.monitoring.system import (
     CKPT_MEMORY_MEASUREMENTS,
     MEMORY_MEASUREMENTS,
@@ -27,30 +27,14 @@ from src.utils import (
     save_yaml,
     subtract_init_memory_usage,
 )
+from src.utils.args import parse_args
 
 IMAGES_FILEPATHS = glob.glob("examples/*")
 
 NUM_WARMUP_ITER = 100
 NUM_INFERENCE_ITER = 1000
 
-MODELS_DIR = "models"
-
-
-def parse_args() -> Namespace:
-    parser = ArgumentParser("PyTorch vs ONNX vs TensorRT inference comparison")
-    parser.add_argument(
-        "--device",
-        type=str,
-        help="Inference device ('cpu' or 'cuda'). cuda available for all engines, cpu not available for TensorRT.",
-        default="cuda",
-    )
-    parser.add_argument(
-        "--engine",
-        type=str,
-        help="Inference engine ('trt', 'onnx' or 'pytorch').",
-        default="trt",
-    )
-    return parser.parse_args()
+RESULTS_DIR = "measurements_results"
 
 
 def run_inference_n_times(
@@ -64,9 +48,8 @@ def run_inference_n_times(
         for i in range(NUM_INFERENCE_ITER):
             probs = engine.inference(image)
             label_idx = np.argmax(probs)
-            label = _IMAGENET_CATEGORIES[label_idx]
             label_prob = probs[label_idx]
-            outputs.append((label_idx, label, round(label_prob, 2)))
+            outputs.append((label_idx, round(label_prob, 2)))
         return outputs
 
     time.sleep(1)
@@ -85,13 +68,13 @@ def test_pytorch_engine(
     device: str,
 ) -> list[tuple]:
     logging.info(" PyTorch ".center(120, "="))
-    module = load_pytorch_module()
+    module = load_pytorch_module(model_name)
     logging.info("Loaded PyTorch Module")
-    model = PyTorchInferenceEngine(engine_cfg, device=device)
-    system_monitor = SystemMetricsMonitor(name=model.name)
-    model.load_module(module, device=device)
+    engine = PyTorchInferenceEngine(engine_cfg, device=device)
+    system_monitor = SystemMetricsMonitor(name=engine.name)
+    engine.load_module(module, device=device)
     system_monitor.checkpoint_metrics("loaded_engine")
-    outputs = run_inference_n_times(model, image, system_monitor)
+    outputs = run_inference_n_times(engine, image, system_monitor)
     return outputs
 
 
@@ -145,19 +128,19 @@ def test_trt_engine(
 
 if __name__ == "__main__":
     args = parse_args()
+    logging.info(f"-> Running measurements for args: \n{args}")
     device = args.device
     engine = args.engine
+    model_name = args.model_name
 
-    engine_cfg = load_engine_cfg()
+    engine_cfg = load_engine_cfg(model_name)
 
-    model_dirpath = f"{MODELS_DIR}/{engine_cfg.name}"
+    model_dirpath = f"{RESULTS_DIR}/{engine_cfg.name}"
     Path(model_dirpath).mkdir(exist_ok=True, parents=True)
     engine_cfg.save_to_yaml(f"{model_dirpath}/config.yaml")
 
     image_filepath = IMAGES_FILEPATHS[0]
     image = load_image(image_filepath)
-
-    module = load_pytorch_module()
 
     engine_fns = {
         "TensorRT": test_trt_engine,
@@ -173,6 +156,7 @@ if __name__ == "__main__":
     outputs = test_engine_fn(image=image, engine_cfg=engine_cfg, device=device)
 
     logging.info(" Finished inference ".center(120, "="))
+    logging.info(f"Outputs: {outputs}")
 
     time_measurements = dict(TIME_MEASUREMENTS["ms"])
 
