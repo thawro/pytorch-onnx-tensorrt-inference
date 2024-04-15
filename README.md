@@ -3,27 +3,36 @@ Inference time comparison between **`PyTorch`**, **`ONNX`** and **`TensorRT`** e
 
 # How to run measurements
 
+> **NOTE:** By default for latency plots outliers are replaced with NaNs
+
 1. Implement your custom model module for config and PyTorch model loading
+
 The custom modules must be placed in `models/<custom_model_name>` and there must be `config.yaml` and `load.py` files present:
 * `config.yaml` - config for engines (ONNX and TensorRT) building ([how to form a config](#model-config))
 * `load.py` - a file with  an *Engine Loader* class definition - *Engine Loader* must implement:
   * `load_example_inputs` - method which returns example model inputs (before preprocessing) as `list[numpy.array]`
   * `load_pytorch_module` - method which returns your model as `torch.nn.Module`
   * `name` attribute (used to get proper loader when calling bash scripts (`model_name` key))
+  
 2. Wrap your *Engine Loader* class with `@register_model` decorator (imported from from `src/utils/utils.py`)
+
 3. Add import statement in `src/load.py` (so decorator registers the model)
+
 4. Set up measurements configuration in `run_all_measurements.sh` script:
-* `num_iter` = number of measurements iterations
-* `num_warmup_iter` = number of warmup iterations
-* `model_name` = *Engine Loader* name
-* `experiments_example_shapes` = string representation of example input shapes to perform experiments on, eg. "[(224,224,3)]" "[(336,336,3)]" "[(448,448,3)]" will perform 3 separate measurements for input shapes (224,224,3), (336,336,3) and (448,448,3)
+
+   * `num_iter` = number of measurements iterations
+   * `num_warmup_iter` = number of warmup iterations
+   * `model_name` = *Engine Loader* name
+   * `experiments_example_shapes` = string representation of example input shapes to perform experiments on, eg. "[(224,224,3)]" "[(336,336,3)]" "[(448,448,3)]" will perform 3 separate measurements for input shapes (224,224,3), (336,336,3) and (448,448,3)
+
 5. Run all measurements:
+
 ```bash
 bash run_all_measurements.sh
 ```
+
 6. Analyse results stored in `measurements_results/<model_name>` directory
 
-> **NOTE:** By default for latency plots outliers are replaced with NaNs
 
 # Model config
 Model config is used to parse model from `PyTorch` to `ONNX` and from `ONNX` to `TensorRRT`
