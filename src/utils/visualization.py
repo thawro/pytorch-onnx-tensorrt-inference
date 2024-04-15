@@ -24,17 +24,19 @@ def plot_time_measurements(
             mask = ((df[col] < q_hi) & (df[col] > q_low)).values
             df[col][~mask] = np.nan
 
-    fig, axes = plt.subplots(2, 1, figsize=(12, 12))
+    fig, axes = plt.subplots(1, 2, figsize=(14, 6))
     sns.histplot(
         df, element="step", kde=True, alpha=0.6, ax=axes[0], stat="density", bins=30
     )
     axes[0].set_xlabel(f"Latency [{time_unit}]", fontsize=14)
     axes[0].set_ylabel("Density", fontsize=14)
+    axes[0].set_title("Distribution", fontsize=18)
 
     for col in df.columns:
         sns.lineplot(x=df.index.values, y=df[col].values, label=col, ax=axes[1])
     axes[1].set_xlabel("Index", fontsize=14)
     axes[1].set_ylabel(f"Latency [{time_unit}]", fontsize=14)
+    axes[1].set_title("For each sample", fontsize=18)
 
     fig.savefig(filepath, bbox_inches="tight", dpi=300)
 
@@ -51,17 +53,19 @@ def plot_memory_measurements(
         stats_dfs[stat_name] = pd.DataFrame.from_dict(stat_measurements)
 
     for name, df in stats_dfs.items():
-        fig, axes = plt.subplots(2, 1, figsize=(12, 12))
+        fig, axes = plt.subplots(1, 2, figsize=(14, 6))
         sns.histplot(
             df, element="step", kde=True, alpha=0.6, ax=axes[0], stat="density", bins=30
         )
         axes[0].set_xlabel(name, fontsize=14)
         axes[0].set_ylabel("Density", fontsize=14)
+        axes[0].set_title("Distribution", fontsize=18)
 
         for col in df.columns:
             sns.lineplot(x=df.index.values, y=df[col].values, label=col, ax=axes[1])
         axes[1].set_xlabel("Index", fontsize=14)
         axes[1].set_ylabel(name, fontsize=14)
+        axes[1].set_title("For each sample", fontsize=18)
 
         fig.savefig(f"{dirpath}/{name}_measurements.jpg", bbox_inches="tight", dpi=300)
 

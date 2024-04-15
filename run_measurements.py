@@ -13,9 +13,10 @@ from src.engines import (
 from src.engines.config import EngineConfig
 from src.load import load_engine_cfg, load_example_inputs, load_pytorch_module
 from src.monitoring.system import SystemMetricsMonitor
-from src.utils import measure_time, save_yaml
+from src.monitoring.time import measure_time
 from src.utils.args import parse_args
 from src.utils.measurements import prepare_measurements
+from src.utils.utils import save_yaml
 
 RESULTS_DIR = "measurements_results"
 

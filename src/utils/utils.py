@@ -1,11 +1,25 @@
+from __future__ import annotations
+
 import glob
 import logging
+from typing import TYPE_CHECKING, Type
 
 import numpy as np
 import yaml
 from PIL import Image
 
+if TYPE_CHECKING:
+    from src.engines.loader import BaseEngineLoader
+
+
 EXAMPLE_IMAGES_FILEPATHS = glob.glob("examples/*")
+MODEL_LOADER_REGISTRY: dict[str, BaseEngineLoader] = {}
+
+
+def register_model(cls: Type[BaseEngineLoader]):
+    print("=" * 100, cls)
+    MODEL_LOADER_REGISTRY[cls.name] = cls()
+    return cls
 
 
 def load_image(filepath: str) -> np.ndarray:

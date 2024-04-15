@@ -6,8 +6,9 @@ num_warmup_iter=100
 
 # Define model name and example shapes for which to run measurements
 model_name="resnet50"
-experiments_example_shapes=("[(224,224,3)]" "[(336,336,3)]" "[(448,448,3)]")
-# experiments_example_shapes=("[(224,224,3)]")
+
+# experiments_example_shapes=("[(224,224,3)]" "[(336,336,3)]" "[(448,448,3)]")
+experiments_example_shapes=("[(224,224,3)]")
 
 
 make engines model_name="$model_name"

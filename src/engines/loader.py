@@ -11,6 +11,8 @@ from src.utils.utils import load_example_image_inputs
 
 
 class BaseEngineLoader(ABC):
+    name: str
+
     def _get_engine_cfg_filepath(self) -> str:
         module_filepath = inspect.getfile(self.__class__)
         cfg_dirpath = Path(module_filepath).parent.absolute()

@@ -8,17 +8,17 @@ from torchvision.models.resnet import (
 
 from src.engines.config import EngineConfig
 from src.engines.loader import ImageModelEngineLoader
+from src.utils.utils import register_model
 
 
 class BaseResnetEngineLoader(ImageModelEngineLoader):
-    name: str
-
     def load_engine_cfg(self) -> EngineConfig:
         engine_cfg = super().load_engine_cfg()
         engine_cfg.name = self.name
         return engine_cfg
 
 
+@register_model
 class Resnet152EngineLoader(BaseResnetEngineLoader):
     name = "resnet152"
 
@@ -29,6 +29,7 @@ class Resnet152EngineLoader(BaseResnetEngineLoader):
         return module
 
 
+@register_model
 class Resnet50EngineLoader(BaseResnetEngineLoader):
     name = "resnet50"
 

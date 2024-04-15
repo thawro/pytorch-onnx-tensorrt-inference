@@ -8,8 +8,8 @@ from src.engines import (
     TensorRTInferenceEngine,
 )
 from src.load import load_engine_cfg
-from src.utils import load_yaml
 from src.utils.args import parse_args
+from src.utils.utils import load_yaml
 from src.utils.visualization import plot_measurements
 
 if __name__ == "__main__":

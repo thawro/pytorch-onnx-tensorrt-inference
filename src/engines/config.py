@@ -79,4 +79,4 @@ class EngineConfig:
 
     @property
     def example_inputs_shapes_str(self) -> str:
-        return str([inp.shapes.example for inp in self.inputs])
+        return str([inp.shapes.example for inp in self.inputs]).replace(" ", "")
