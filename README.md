@@ -16,7 +16,7 @@ The custom modules must be placed in `models/<custom_model_name>` and there must
   
 2. Wrap your *Engine Loader* class with `@register_model` decorator (imported from from `src/utils/utils.py`)
 
-3. Add import statement in `src/load.py` (so decorator registers the model)
+3. Add import statement in `src/loaders.py` (so decorator registers the model)
 
 4. Set up measurements configuration in `run_all_measurements.sh` script:
 
@@ -57,7 +57,32 @@ outputs: # list of output definitions
 ```
 
 # Example - `ResNet50` architecture
-Model config:
+
+## Changes in code
+
+### `models/resnet/load.py`
+
+```python
+from src.engines.loader import ImageModelEngineLoader
+from src.utils.utils import register_model
+from torch import nn
+from torchvision.models.resnet import ResNet50_Weights, resnet50
+
+@register_model
+class Resnet50EngineLoader(ImageModelEngineLoader):
+    name = "resnet50"
+
+    def load_pytorch_module(self) -> nn.Module:
+        module = resnet50(weights=ResNet50_Weights.DEFAULT)
+        module.fc = nn.Sequential(*[module.fc, nn.Softmax()])  # logits -> probs
+        module.eval()
+        return module
+```
+
+
+
+### `models/resnet/config.yaml`
+
 ```yaml
 name: resnet50
 inputs:
@@ -78,24 +103,49 @@ outputs:
       dims_names: [batch_size, probs]
 ```
 
-## CUDA
+### `src/loaders.py`
 
-### Latency
+```python
+from models.resnet.load import Resnet50EngineLoader
+```
+
+### `run_all_measurements.sh` settings
+
+```bash
+num_iter=1000
+num_warmup_iter=100
+model_name="resnet50"
+experiments_example_shapes=("[(224,224,3)]")
+```
+
+
+
+## Execute measurements
+
+```bash
+bash run_all_measurements.sh
+```
+
+## Measurements results
+
+### CUDA
+
+#### Latency
 ![cuda_latency](./measurements_results/resnet50/plots/[(224,224,3)]/cuda_time_measurements.jpg)
 
-### Memory (VRAM) [mb] 
+#### Memory (VRAM) [mb] 
 ![gpu_vram](./measurements_results/resnet50/plots/[(224,224,3)]/gpu_0_mb_measurements.jpg)
 
-### Utilisation [%] 
+#### Utilisation [%] 
 ![gpu_util](./measurements_results/resnet50/plots/[(224,224,3)]/gpu_0_pct_util_measurements.jpg)
 
-## CPU
+### CPU
 
-### Latency
+#### Latency
 ![cpu_latency](./measurements_results/resnet50/plots/[(224,224,3)]/cpu_time_measurements.jpg)
 
-### Memory (RAM) [mb] 
+#### Memory (RAM) [mb] 
 ![cpu_ram](./measurements_results/resnet50/plots/[(224,224,3)]/cpu_mb_measurements.jpg)
 
-### Utilisation [%] 
+#### Utilisation [%] 
 ![cpu_util](./measurements_results/resnet50/plots/[(224,224,3)]/cpu_pct_util_measurements.jpg)

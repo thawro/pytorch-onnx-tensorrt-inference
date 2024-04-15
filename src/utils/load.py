@@ -1,11 +1,8 @@
 import numpy as np
 from torch import nn
 
-from models.resnet.load import Resnet50EngineLoader, Resnet152EngineLoader
-
-# from models.encoder.load import EncoderEngineLoader
-# from models.localizer.load import LocalizerEngineLoader
 from src.engines.config import EngineConfig
+from src.loaders import *  # noqa
 from src.utils.utils import MODEL_LOADER_REGISTRY
 
 

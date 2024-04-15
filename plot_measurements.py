@@ -7,8 +7,8 @@ from src.engines import (
     PyTorchInferenceEngine,
     TensorRTInferenceEngine,
 )
-from src.load import load_engine_cfg
 from src.utils.args import parse_args
+from src.utils.load import load_engine_cfg
 from src.utils.utils import load_yaml
 from src.utils.visualization import plot_measurements
 

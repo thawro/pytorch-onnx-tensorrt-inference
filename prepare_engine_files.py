@@ -6,8 +6,8 @@ from torch import nn
 from run_measurements import RESULTS_DIR
 from src.engines import PyTorchInferenceEngine, TensorRTInferenceEngine
 from src.engines.config import EngineConfig
-from src.load import load_engine_cfg, load_pytorch_module
 from src.utils.args import parse_args
+from src.utils.load import load_engine_cfg, load_pytorch_module
 
 
 def save_onnx_engine(module: nn.Module, engine_cfg: EngineConfig):
