@@ -10,6 +10,9 @@ def parse_example_shapes(
     example_shapes = ast.literal_eval(example_shapes_str)
     if isinstance(example_shapes, tuple):
         example_shapes = list(example_shapes)
+    for i, example_shape in enumerate(example_shapes):
+        if isinstance(example_shape, int):
+            example_shapes[i] = (example_shape,)
     return example_shapes
 
 
