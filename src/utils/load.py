@@ -7,6 +7,10 @@ from src.utils.utils import MODEL_LOADER_REGISTRY
 
 
 def load_engine_cfg(model_name: str) -> EngineConfig:
+    if model_name not in MODEL_LOADER_REGISTRY:
+        raise KeyError(
+            f"The Engine Loader with name '{model_name}' wasn't registered yet. Make sure to import the custom loader in src/loaders.py"
+        )
     engine_loader = MODEL_LOADER_REGISTRY[model_name]
     engine_cfg = engine_loader.load_engine_cfg()
     return engine_cfg
