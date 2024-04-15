@@ -4,10 +4,10 @@ import numpy as np
 import tensorrt as trt
 from cuda import cudart
 
-from ...utils import measure_time
-from ..base import BaseInferenceEngine
-from .memory import HostDeviceMem, allocate_buffers, free_buffers
-from .utils import TRT_MAJOR_VERSION, cuda_call
+from src.engines.engines.base import BaseInferenceEngine
+from src.engines.engines.trt.memory import HostDeviceMem, allocate_buffers, free_buffers
+from src.engines.engines.trt.utils import TRT_MAJOR_VERSION, cuda_call
+from src.monitoring.time import measure_time
 
 TRT_LOGGER = trt.Logger(trt.Logger.INFO)
 
@@ -140,7 +140,7 @@ class TensorRTInferenceEngine(BaseInferenceEngine):
     @measure_time(time_unit="ms", name="TensorRT")
     def inference(
         self, inputs: list[np.ndarray], context: trt.IExecutionContext | None = None
-    ):
+    ) -> list[np.ndarray]:
         if context is None:
             context = self.context
 
@@ -155,8 +155,7 @@ class TensorRTInferenceEngine(BaseInferenceEngine):
             outputs=self.outputs,
             stream=self.stream,
         )
-        probs = outputs[0]
-        return probs
+        return outputs
 
     def free_buffers(self):
         free_buffers(self.inputs, self.outputs, self.stream)

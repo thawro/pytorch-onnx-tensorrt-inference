@@ -76,3 +76,7 @@ class EngineConfig:
         with open(filepath) as file:
             data = yaml.safe_load(file)
         return from_dict(data_class=cls, data=data)
+
+    @property
+    def example_inputs_shapes_str(self) -> str:
+        return str([inp.shapes.example for inp in self.inputs])

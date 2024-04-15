@@ -1,4 +1,16 @@
+import ast
 from argparse import ArgumentParser, Namespace
+
+
+def parse_example_shapes(
+    example_shapes_str: str | None,
+) -> list[tuple[int, ...]] | None:
+    if example_shapes_str is None:
+        return None
+    example_shapes = ast.literal_eval(example_shapes_str)
+    if isinstance(example_shapes, tuple):
+        example_shapes = list(example_shapes)
+    return example_shapes
 
 
 def parse_args() -> Namespace:
@@ -33,4 +45,18 @@ def parse_args() -> Namespace:
         help="Number of warmup iterations (not included in measurements statistics)",
         default=100,
     )
-    return parser.parse_args()
+    parser.add_argument(
+        "--example_shapes",
+        type=str,
+        help='Example inputs shapes in form "([dim_00, ..., dim_0N], ..., [dim_N0, ..., dim_NN])"',
+        default=None,
+    )
+    args = parser.parse_args()
+    args.example_shapes = parse_example_shapes(args.example_shapes)
+    return args
+
+
+if __name__ == "__main__":
+    args = parse_args()
+    print(args)
+    print(args.example_shapes, type(args.example_shapes))

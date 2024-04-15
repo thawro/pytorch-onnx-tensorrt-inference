@@ -1,4 +1,3 @@
-import glob
 import logging
 import time
 from pathlib import Path
@@ -12,41 +11,26 @@ from src.engines import (
     TensorRTInferenceEngine,
 )
 from src.engines.config import EngineConfig
-from src.load import load_engine_cfg, load_pytorch_module
-from src.monitoring.system import (
-    CKPT_MEMORY_MEASUREMENTS,
-    MEMORY_MEASUREMENTS,
-    SystemMetricsMonitor,
-)
-from src.monitoring.time import TIME_MEASUREMENTS
-from src.utils import (
-    defaultdict2dict,
-    load_image,
-    measure_time,
-    save_yaml,
-    subtract_init_memory_usage,
-)
+from src.load import load_engine_cfg, load_example_inputs, load_pytorch_module
+from src.monitoring.system import SystemMetricsMonitor
+from src.utils import measure_time, save_yaml
 from src.utils.args import parse_args
-
-IMAGES_FILEPATHS = glob.glob("examples/*")
+from src.utils.measurements import prepare_measurements
 
 RESULTS_DIR = "measurements_results"
 
 
 def run_inference_n_times(
     engine: BaseInferenceEngine,
-    image: np.ndarray,
+    example_inputs: list[np.ndarray],
     system_monitor: SystemMetricsMonitor,
 ) -> list[tuple]:
     @measure_time(time_unit="ms")
     def _run_inference_n_times() -> list[tuple]:
         outputs_avg = []
         for i in range(args.num_iter):
-            inputs = [image]
-            # other = np.random.random((6,)).astype(np.float32)
-            # inputs = [image, other]
-            outputs = engine.inference(inputs)
-            outputs_avg.append(outputs.mean())
+            outputs = engine.inference(example_inputs)
+            outputs_avg.append([out.mean() for out in outputs])
         return outputs_avg
 
     time.sleep(1)
@@ -60,23 +44,23 @@ def run_inference_n_times(
 
 
 def test_pytorch_engine(
-    image: np.ndarray,
+    example_inputs: list[np.ndarray],
     engine_cfg: EngineConfig,
     device: str,
 ) -> list[tuple]:
     logging.info(" PyTorch ".center(120, "="))
-    module = load_pytorch_module(model_name)
-    logging.info("Loaded PyTorch Module")
     engine = PyTorchInferenceEngine(engine_cfg, device=device)
     system_monitor = SystemMetricsMonitor(name=engine.name)
+    module = load_pytorch_module(model_name)
+    logging.info("Loaded PyTorch Module")
     engine.load_module(module, device=device)
     system_monitor.checkpoint_metrics("loaded_engine")
-    outputs = run_inference_n_times(engine, image, system_monitor)
+    outputs = run_inference_n_times(engine, example_inputs, system_monitor)
     return outputs
 
 
 def test_onnx_engine(
-    image: np.ndarray,
+    example_inputs: list[np.ndarray],
     engine_cfg: EngineConfig,
     device: str,
 ) -> list[tuple]:
@@ -91,12 +75,12 @@ def test_onnx_engine(
     system_monitor.checkpoint_metrics("loaded_engine")
     onnx_engine.allocate_buffers()
     system_monitor.checkpoint_metrics("allocated_buffers")
-    outputs = run_inference_n_times(onnx_engine, image, system_monitor)
+    outputs = run_inference_n_times(onnx_engine, example_inputs, system_monitor)
     return outputs
 
 
 def test_trt_engine(
-    image: np.ndarray,
+    example_inputs: list[np.ndarray],
     engine_cfg: EngineConfig,
     device: str,
 ) -> list[tuple]:
@@ -119,7 +103,7 @@ def test_trt_engine(
     context.set_input_shape(input_cfg.name, (1, c, h, w))
     trt_engine.allocate_buffers()
     system_monitor.checkpoint_metrics("allocated_buffers")
-    outputs = run_inference_n_times(trt_engine, image, system_monitor)
+    outputs = run_inference_n_times(trt_engine, example_inputs, system_monitor)
     return outputs
 
 
@@ -129,42 +113,44 @@ if __name__ == "__main__":
     device = args.device
     engine = args.engine
     model_name = args.model_name
-
-    engine_cfg = load_engine_cfg(model_name)
-
-    model_dirpath = f"{RESULTS_DIR}/{engine_cfg.name}"
-    Path(model_dirpath).mkdir(exist_ok=True, parents=True)
-    engine_cfg.save_to_yaml(f"{model_dirpath}/config.yaml")
-
-    image_filepath = IMAGES_FILEPATHS[0]
-    image = load_image(image_filepath)
+    num_warmup_iter = args.num_warmup_iter
 
     engine_fns = {
         "TensorRT": test_trt_engine,
         "ONNX": test_onnx_engine,
         "PyTorch": test_pytorch_engine,
     }
+
     assert (
         engine in engine_fns.keys()
     ), f"Engine must be one of {list(engine_fns.keys())}"
 
+    engine_cfg = load_engine_cfg(model_name)
+    example_inputs = load_example_inputs(model_name)
+
+    # change example inputs shapes according to CLI args
+    if args.example_shapes is not None:
+        for i in range(len(engine_cfg.inputs)):
+            engine_cfg.inputs[i].shapes.example = args.example_shapes[i]
+
+    model_dirpath = f"{RESULTS_DIR}/{engine_cfg.name}"
+    Path(model_dirpath).mkdir(exist_ok=True, parents=True)
+    engine_cfg.save_to_yaml(f"{model_dirpath}/config.yaml")
+
     test_engine_fn = engine_fns[engine]
 
-    outputs = test_engine_fn(image=image, engine_cfg=engine_cfg, device=device)
+    outputs = test_engine_fn(
+        example_inputs=example_inputs, engine_cfg=engine_cfg, device=device
+    )
 
     logging.info(" Finished inference ".center(120, "="))
     logging.info(f"Outputs: {outputs}")
 
-    time_measurements = dict(TIME_MEASUREMENTS["ms"])
-
-    results_dirpath = f"{model_dirpath}/results"
+    results_dirpath = f"{model_dirpath}/results/{engine_cfg.example_inputs_shapes_str}"
     Path(results_dirpath).mkdir(exist_ok=True, parents=True)
-    save_yaml(time_measurements, f"{results_dirpath}/{device}_{engine}_latency.yaml")
 
-    if device == "cuda":
-        memory_measurements = defaultdict2dict(MEMORY_MEASUREMENTS)
-        ckpt_memory_measurements = defaultdict2dict(CKPT_MEMORY_MEASUREMENTS)
-        memory_measurements = subtract_init_memory_usage(
-            memory_measurements, ckpt_memory_measurements
-        )
-        save_yaml(memory_measurements, f"{results_dirpath}/{engine}_gpu_memory.yaml")
+    time_measurements, memory_measurements = prepare_measurements(
+        skip_first_n=num_warmup_iter
+    )
+    save_yaml(memory_measurements, f"{results_dirpath}/{device}_{engine}_memory.yaml")
+    save_yaml(time_measurements, f"{results_dirpath}/{device}_{engine}_latency.yaml")

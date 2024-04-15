@@ -5,7 +5,7 @@ import numpy as np
 import tensorrt as trt
 from cuda import cudart
 
-from .utils import cuda_call
+from src.engines.engines.trt.utils import cuda_call
 
 
 class HostDeviceMem:

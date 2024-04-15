@@ -2,3 +2,5 @@
 *.onnx
 *.engine
 *.pt
+*/localizer
+*/encoder

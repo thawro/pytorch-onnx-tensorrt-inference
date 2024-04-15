@@ -3,7 +3,7 @@ import logging
 import cv2
 import numpy as np
 
-from .config import EngineConfig
+from src.engines.config import EngineConfig
 
 
 class BaseInferenceEngine:
@@ -14,7 +14,7 @@ class BaseInferenceEngine:
         self.example_input_shapes = [inp.shapes.example for inp in cfg.inputs]
         self.dtypes = [inp.dtype for inp in cfg.inputs]
 
-    def inference(self, inputs: list[np.ndarray]):
+    def inference(self, inputs: list[np.ndarray]) -> list[np.ndarray]:
         raise NotImplementedError()
 
     def _dummy_input(self, shape: list[int], dtype: np.dtype):

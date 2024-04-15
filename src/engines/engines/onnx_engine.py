@@ -3,9 +3,9 @@ import logging
 import numpy as np
 import onnxruntime as ort
 
-from ..utils import measure_time
-from .base import BaseInferenceEngine
-from .config import EngineConfig
+from src.engines.config import EngineConfig
+from src.engines.engines.base import BaseInferenceEngine
+from src.monitoring.time import measure_time
 
 DEFAULT_PROVIDERS = ["CPUExecutionProvider", "CUDAExecutionProvider"]
 TRT_PROVIDERS = ["TensorrtExecutionProvider", "CUDAExecutionProvider"]
@@ -82,13 +82,12 @@ class ONNXInferenceEngine(BaseInferenceEngine):
         return outputs
 
     @measure_time(time_unit="ms", name="ONNX")
-    def inference(self, inputs: list[np.ndarray]):
+    def inference(self, inputs: list[np.ndarray]) -> list[np.ndarray]:
         if self.use_gpu:
             outputs = self._inference_gpu(inputs)
         else:
             outputs = self._inference_cpu(inputs)
-        probs = outputs[0][0]
-        return probs
+        return outputs
 
     def free_buffers(self):
         if not self.use_gpu:

@@ -4,5 +4,4 @@ from .utils import (
     load_image,
     load_yaml,
     save_yaml,
-    subtract_init_memory_usage,
 )

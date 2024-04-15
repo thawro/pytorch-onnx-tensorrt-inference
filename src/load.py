@@ -1,29 +1,38 @@
 from typing import Literal
 
+import numpy as np
 from torch import nn
 
-import models.encoder.load as model_encoder
-import models.localizer.load as model_localizer
-import models.resnet152.load as model_resnet_152
+from models.encoder.load import EncoderEngineLoader
+from models.localizer.load import LocalizerEngineLoader
+from models.resnet.load import Resnet50EngineLoader, Resnet152EngineLoader
 from src.engines.config import EngineConfig
+from src.engines.loader import BaseEngineLoader
 
-_model_name = Literal["resnet152", "localizer", "encoder"]
+_model_name = Literal["resnet50", "resnet152", "localizer", "encoder"]
 
 
-model2module = {
-    "resnet152": model_resnet_152,
-    "localizer": model_localizer,
-    "encoder": model_encoder,
+model2loader: dict[str, BaseEngineLoader] = {
+    "resnet50": Resnet50EngineLoader(),
+    "resnet152": Resnet152EngineLoader(),
+    "localizer": LocalizerEngineLoader(),
+    "encoder": EncoderEngineLoader(),
 }
 
 
 def load_engine_cfg(model_name: _model_name) -> EngineConfig:
-    python_module = model2module[model_name]
-    engine_cfg = python_module.load_engine_cfg()
+    engine_loader = model2loader[model_name]
+    engine_cfg = engine_loader.load_engine_cfg()
     return engine_cfg
 
 
 def load_pytorch_module(model_name: _model_name) -> nn.Module:
-    python_module = model2module[model_name]
-    pytorch_module = python_module.load_pytorch_module()
+    engine_loader = model2loader[model_name]
+    pytorch_module = engine_loader.load_pytorch_module()
     return pytorch_module
+
+
+def load_example_inputs(model_name: _model_name) -> list[np.ndarray]:
+    engine_loader = model2loader[model_name]
+    example_inputs = engine_loader.load_example_inputs()
+    return example_inputs

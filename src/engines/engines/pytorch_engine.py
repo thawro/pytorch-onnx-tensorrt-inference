@@ -2,9 +2,9 @@ import numpy as np
 import torch.onnx
 from torch import nn
 
-from ..utils import measure_time
-from .base import BaseInferenceEngine
-from .config import EngineConfig
+from src.engines.config import EngineConfig
+from src.engines.engines.base import BaseInferenceEngine
+from src.monitoring.time import measure_time
 
 DEFAULT_DEVICE = "cuda"
 
@@ -62,12 +62,15 @@ class PyTorchInferenceEngine(BaseInferenceEngine):
         return [torch.from_numpy(inp).to(device) for inp in inputs]
 
     @measure_time(time_unit="ms", name="PyTorch")
-    def inference(self, inputs: list[np.ndarray]):
+    def inference(self, inputs: list[np.ndarray]) -> list[np.ndarray]:
         with torch.no_grad():
             preprocessed_inputs = self.preprocess_inputs(inputs)
             inputs_on_device = self.move_inputs_to_device(preprocessed_inputs)
-            probs = self.module(*inputs_on_device)[0].cpu().numpy()
-        return probs
+            outputs = self.module(*inputs_on_device)
+        if not isinstance(outputs, list):
+            outputs = [outputs]
+        outputs = [out.cpu().numpy() for out in outputs]
+        return outputs
 
     def free_buffers(self):
         self.module.to("cpu")

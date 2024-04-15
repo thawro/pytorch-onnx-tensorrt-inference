@@ -1,10 +1,24 @@
+import glob
+import logging
+
 import numpy as np
 import yaml
 from PIL import Image
 
+EXAMPLE_IMAGES_FILEPATHS = glob.glob("examples/*")
+
 
 def load_image(filepath: str) -> np.ndarray:
     return np.asarray(Image.open(filepath).convert("RGB"))
+
+
+def load_example_image_inputs(
+    filepath: str = EXAMPLE_IMAGES_FILEPATHS[0],
+) -> list[np.ndarray]:
+    logging.info(f"-> Loading image from {filepath}")
+    image = load_image(filepath)
+    inputs = [image]
+    return inputs
 
 
 def save_yaml(dct: dict, filepath: str):
@@ -23,18 +37,3 @@ def defaultdict2dict(d):
         if isinstance(v, dict):
             d[k] = defaultdict2dict(v)
     return dict(d)
-
-
-def subtract_init_memory_usage(
-    memory_measurements: dict, ckpt_memory_measurements: dict
-) -> dict:
-    _memory_measurements = memory_measurements.copy()
-    for engine_name, memory_ckpt_stats in ckpt_memory_measurements.items():
-        init_stats = memory_ckpt_stats["initialized"]
-        # NOTE: remove init value of memory (mb) stats to know how much increased
-        for stat_name, init_value in init_stats.items():
-            if "mb" in stat_name:
-                values = _memory_measurements[engine_name][stat_name]
-                values = [value - init_value for value in values]
-                _memory_measurements[engine_name][stat_name] = values
-    return _memory_measurements
