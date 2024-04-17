@@ -7,6 +7,7 @@ from typing import TYPE_CHECKING, Type
 import numpy as np
 import yaml
 from PIL import Image
+from typing import List, Optional, Union, Tuple
 
 if TYPE_CHECKING:
     from src.engines.loader import BaseEngineLoader
@@ -28,7 +29,7 @@ def load_image(filepath: str) -> np.ndarray:
 
 def load_example_image_inputs(
     filepath: str = EXAMPLE_IMAGES_FILEPATHS[0],
-) -> list[np.ndarray]:
+) -> List[np.ndarray]:
     logging.info(f"-> Loading image from {filepath}")
     image = load_image(filepath)
     inputs = [image]

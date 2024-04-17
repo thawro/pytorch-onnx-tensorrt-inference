@@ -6,6 +6,7 @@ import pandas as pd
 import seaborn as sns
 
 from src.monitoring.time import _time_unit
+from typing import List, Optional, Union, Tuple
 
 sns.set_style("whitegrid")
 
@@ -42,7 +43,7 @@ def plot_time_measurements(
 
 
 def plot_memory_measurements(
-    memory_measurements, stats_names: list[str], dirpath: str = "."
+    memory_measurements, stats_names: List[str], dirpath: str = "."
 ):
     stats_dfs = {}
     for stat_name in stats_names:

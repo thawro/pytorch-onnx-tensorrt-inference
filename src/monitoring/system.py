@@ -6,12 +6,13 @@ from collections import defaultdict
 
 import psutil
 import pynvml
+from typing import List, Optional, Union
 
 MEMORY_MEASUREMENTS = defaultdict(lambda: defaultdict(list))
 CKPT_MEMORY_MEASUREMENTS = defaultdict(dict)
 
 
-def gather_system_metrics(gpu_handles: list) -> dict[str, float]:
+def gather_system_metrics(gpu_handles: List) -> dict[str, float]:
     metrics = {}
     cpu_percent = psutil.cpu_percent()
     cpu_memory = psutil.virtual_memory()
@@ -64,7 +65,7 @@ class SystemMetricsMonitor:
         self,
         sampling_interval: float = 0.001,
         samples_before_logging: int = 1,
-        name: str | None = None,
+        name: Optional[str] = None,
     ):
         self.sampling_interval = sampling_interval
         self._shutdown_event = threading.Event()
@@ -75,7 +76,7 @@ class SystemMetricsMonitor:
         self.name = name
         self.checkpoint_metrics("initialized")
 
-    def reinitialize(self, name: str | None = None):
+    def reinitialize(self, name: Optional[str] = None):
         return SystemMetricsMonitor(
             sampling_interval=self.sampling_interval,
             samples_before_logging=self.samples_before_logging,

@@ -3,7 +3,7 @@ import time
 from collections import defaultdict
 from functools import wraps
 from pathlib import Path
-from typing import Any, Callable, Literal
+from typing import Any, Callable, Literal, List, Optional, Union
 
 logging.basicConfig(level=logging.INFO)
 
@@ -25,7 +25,7 @@ def parse_time(time_in_sec: float, time_unit: _time_unit = "ms") -> float:
     return sec2unit[time_unit]
 
 
-def measure_time(time_unit: _time_unit = "ms", name: str | None = None) -> Callable:
+def measure_time(time_unit: _time_unit = "ms", name: Optional[str] = None) -> Callable:
     """Measure function execution time"""
 
     def function_measure_time(function: Callable) -> Callable:

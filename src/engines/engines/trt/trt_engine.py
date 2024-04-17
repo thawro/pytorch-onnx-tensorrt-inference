@@ -2,12 +2,16 @@ import logging
 
 import numpy as np
 import tensorrt as trt
-from cuda import cudart
+
+import pycuda.autoinit
+import pycuda.driver as cuda
+
 
 from src.engines.engines.base import BaseInferenceEngine
 from src.engines.engines.trt.memory import HostDeviceMem, allocate_buffers, free_buffers
 from src.engines.engines.trt.utils import TRT_MAJOR_VERSION, cuda_call
 from src.monitoring.time import measure_time
+from typing import List, Optional, Union
 
 TRT_LOGGER = trt.Logger(trt.Logger.INFO)
 
@@ -17,24 +21,18 @@ dtypes = {np.float32: trt.float32}
 
 def _do_inference_base(inputs, outputs, stream, execute_async_func):
     # Transfer input data to the GPU.
-    kind = cudart.cudaMemcpyKind.cudaMemcpyHostToDevice
     for inp in inputs:
-        cuda_call(
-            cudart.cudaMemcpyAsync(inp.device, inp.host, inp.nbytes, kind, stream)
-        )
+        cuda.memcpy_htod_async(inp.device, inp.host, stream)
 
     # Run inference.
     execute_async_func()
-    # Transfer predictions back from the GPU.
-    kind = cudart.cudaMemcpyKind.cudaMemcpyDeviceToHost
 
+    # Transfer predictions back from the GPU.
     for out in outputs:
-        cuda_call(
-            cudart.cudaMemcpyAsync(out.host, out.device, out.nbytes, kind, stream)
-        )
+        cuda.memcpy_dtoh_async(out.host, out.device, stream)
 
     # Synchronize the stream
-    cuda_call(cudart.cudaStreamSynchronize(stream))
+    stream.synchronize()
     # Return only the host outputs.
     return [out.host for out in outputs]
 
@@ -42,18 +40,20 @@ def _do_inference_base(inputs, outputs, stream, execute_async_func):
 def do_inference(
     context: trt.IExecutionContext,
     engine: trt.ICudaEngine,
-    bindings: list[int],
-    inputs: list[HostDeviceMem],
-    outputs: list[HostDeviceMem],
-    stream,
+    bindings: List[int],
+    inputs: List[HostDeviceMem],
+    outputs: List[HostDeviceMem],
+    stream: cuda.Stream,
 ):
     # This function is generalized for multiple inputs/outputs.
     # inputs and outputs are expected to be lists of HostDeviceMem objects.
     def execute_async_func():
         if TRT_MAJOR_VERSION >= 10:
             context.execute_async_v3(stream_handle=stream)
+        elif TRT_MAJOR_VERSION >= 8:
+            context.execute_async_v2(bindings=bindings, stream_handle=stream.handle)
         else:
-            context.execute_async_v2(bindings=bindings, stream_handle=stream)
+            context.execute_async(bindings=bindings, stream_handle=stream.handle)
 
     # Setup context tensor address.
     for i in range(engine.num_io_tensors):
@@ -81,7 +81,7 @@ class TensorRTInferenceEngine(BaseInferenceEngine):
 
     def create_stream(self):
         logging.info("-> Creating Stream handle (pointer)")
-        stream = cuda_call(cudart.cudaStreamCreate())
+        stream = cuda.Stream()
         self.stream = stream
         return stream
 
@@ -133,14 +133,14 @@ class TensorRTInferenceEngine(BaseInferenceEngine):
         with open(f"{dirpath}/{self.cfg.trt_filename}", "wb") as engine_file:
             engine_file.write(self.engine.serialize())
 
-    def move_inputs_to_device(self, inputs: list[np.ndarray]):
+    def move_inputs_to_device(self, inputs: List[np.ndarray]):
         for i, inp in enumerate(inputs):
             np.copyto(self.inputs[i].host, inp.ravel())
 
     @measure_time(time_unit="ms", name="TensorRT")
     def inference(
-        self, inputs: list[np.ndarray], context: trt.IExecutionContext | None = None
-    ) -> list[np.ndarray]:
+        self, inputs: List[np.ndarray], context: Optional[trt.IExecutionContext] = None
+    ) -> List[np.ndarray]:
         if context is None:
             context = self.context
 

@@ -17,17 +17,18 @@ from src.utils.args import parse_args
 from src.utils.load import load_engine_cfg, load_example_inputs, load_pytorch_module
 from src.utils.measurements import prepare_measurements
 from src.utils.utils import save_yaml
+from typing import List, Optional, Union, Tuple
 
 RESULTS_DIR = "measurements_results"
 
 
 def run_inference_n_times(
     engine: BaseInferenceEngine,
-    example_inputs: list[np.ndarray],
+    example_inputs: List[np.ndarray],
     system_monitor: SystemMetricsMonitor,
-) -> list[tuple]:
+) -> List[Tuple]:
     @measure_time(time_unit="ms")
-    def _run_inference_n_times() -> list[tuple]:
+    def _run_inference_n_times() -> List[Tuple]:
         outputs_avg = []
         for i in range(args.num_iter):
             outputs = engine.inference(example_inputs)
@@ -45,10 +46,10 @@ def run_inference_n_times(
 
 
 def test_pytorch_engine(
-    example_inputs: list[np.ndarray],
+    example_inputs: List[np.ndarray],
     engine_cfg: EngineConfig,
     device: str,
-) -> list[tuple]:
+) -> List[Tuple]:
     logging.info(" PyTorch ".center(120, "="))
     engine = PyTorchInferenceEngine(engine_cfg, device=device)
     system_monitor = SystemMetricsMonitor(name=engine.name)
@@ -61,10 +62,10 @@ def test_pytorch_engine(
 
 
 def test_onnx_engine(
-    example_inputs: list[np.ndarray],
+    example_inputs: List[np.ndarray],
     engine_cfg: EngineConfig,
     device: str,
-) -> list[tuple]:
+) -> List[Tuple]:
     logging.info(" ONNX ".center(120, "="))
     providers = (
         ["CPUExecutionProvider"] if device == "cpu" else ["CUDAExecutionProvider"]
@@ -81,10 +82,10 @@ def test_onnx_engine(
 
 
 def test_trt_engine(
-    example_inputs: list[np.ndarray],
+    example_inputs: List[np.ndarray],
     engine_cfg: EngineConfig,
     device: str,
-) -> list[tuple]:
+) -> List[Tuple]:
     logging.info(" TensorRT ".center(120, "="))
     if device != "cuda":
         e = ValueError("TensorRT doesn't support CPU device. Returning None")

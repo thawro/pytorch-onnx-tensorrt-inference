@@ -6,6 +6,8 @@ import onnxruntime as ort
 from src.engines.config import EngineConfig
 from src.engines.engines.base import BaseInferenceEngine
 from src.monitoring.time import measure_time
+from typing import List, Optional, Union
+
 
 DEFAULT_PROVIDERS = ["CPUExecutionProvider", "CUDAExecutionProvider"]
 TRT_PROVIDERS = ["TensorrtExecutionProvider", "CUDAExecutionProvider"]
@@ -14,7 +16,7 @@ TRT_PROVIDERS = ["TensorrtExecutionProvider", "CUDAExecutionProvider"]
 class ONNXInferenceEngine(BaseInferenceEngine):
     name: str = "ONNX"
 
-    def __init__(self, cfg: EngineConfig, providers: list[str] = DEFAULT_PROVIDERS):
+    def __init__(self, cfg: EngineConfig, providers: List[str] = DEFAULT_PROVIDERS):
         super().__init__(cfg)
         self.providers = providers
         self.device = "cpu" if "CPUExecutionProvider" in self.providers else "cuda"
@@ -51,7 +53,7 @@ class ONNXInferenceEngine(BaseInferenceEngine):
     def use_gpu(self) -> bool:
         return self.device != "cpu"
 
-    def move_inputs_to_device(self, inputs: list[np.ndarray]):
+    def move_inputs_to_device(self, inputs: List[np.ndarray]):
         if self.use_gpu:
             return [
                 ort.OrtValue.ortvalue_from_numpy(inp, self.device, self.device_id)
@@ -59,7 +61,7 @@ class ONNXInferenceEngine(BaseInferenceEngine):
             ]
         return inputs
 
-    def _inference_gpu(self, inputs: list[np.ndarray]) -> list[np.ndarray]:
+    def _inference_gpu(self, inputs: List[np.ndarray]) -> List[np.ndarray]:
         preprocessed_inputs = self.preprocess_inputs(inputs)
         device_inputs = self.move_inputs_to_device(preprocessed_inputs)
         for i, inp in enumerate(device_inputs):
@@ -73,7 +75,7 @@ class ONNXInferenceEngine(BaseInferenceEngine):
         outputs = self.io_binding.copy_outputs_to_cpu()
         return outputs
 
-    def _inference_cpu(self, inputs: list[np.ndarray]) -> list[np.ndarray]:
+    def _inference_cpu(self, inputs: List[np.ndarray]) -> List[np.ndarray]:
         preprocessed_inputs = self.preprocess_inputs(inputs)
         model_input = {
             self.cfg.inputs[i].name: inp for i, inp in enumerate(preprocessed_inputs)
@@ -82,7 +84,7 @@ class ONNXInferenceEngine(BaseInferenceEngine):
         return outputs
 
     @measure_time(time_unit="ms", name="ONNX")
-    def inference(self, inputs: list[np.ndarray]) -> list[np.ndarray]:
+    def inference(self, inputs: List[np.ndarray]) -> List[np.ndarray]:
         if self.use_gpu:
             outputs = self._inference_gpu(inputs)
         else:

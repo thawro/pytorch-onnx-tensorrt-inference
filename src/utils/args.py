@@ -1,10 +1,11 @@
 import ast
 from argparse import ArgumentParser, Namespace
 
+from typing import List, Optional, Union, Tuple
 
 def parse_example_shapes(
-    example_shapes_str: str | None,
-) -> list[tuple[int, ...]] | None:
+    example_shapes_str: Optional[str],
+) -> Optional[List[Tuple[int, ...]]]:
     if example_shapes_str is None:
         return None
     example_shapes = ast.literal_eval(example_shapes_str)

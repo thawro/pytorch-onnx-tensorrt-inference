@@ -3,13 +3,14 @@ from dataclasses import asdict, dataclass
 import numpy as np
 import yaml
 from dacite import from_dict
+from typing import List, Optional, Union
 
 
 @dataclass
 class OptimizationShapes:
-    min: list[int]
-    opt: list[int]
-    max: list[int]
+    min: List[int]
+    opt: List[int]
+    max: List[int]
 
     def to_dict(self):
         return asdict(self)
@@ -17,16 +18,16 @@ class OptimizationShapes:
 
 @dataclass
 class InputShape:
-    dims_names: list[str]
-    runtime: list[int]
-    example: list[int]
+    dims_names: List[str]
+    runtime: List[int]
+    example: List[int]
     optimization: OptimizationShapes
 
 
 @dataclass
 class OutputShape:
-    runtime: list[int]
-    dims_names: list[str]
+    runtime: List[int]
+    dims_names: List[str]
 
 
 @dataclass
@@ -56,8 +57,8 @@ class Output:
 @dataclass
 class EngineConfig:
     name: str
-    inputs: list[Input]
-    outputs: list[Output]
+    inputs: List[Input]
+    outputs: List[Output]
 
     def __post_init__(self):
         self.onnx_filename = f"{self.name}.onnx"

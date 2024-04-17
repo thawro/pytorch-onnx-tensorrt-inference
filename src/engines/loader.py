@@ -8,6 +8,7 @@ from torch import nn
 
 from src.engines.config import EngineConfig
 from src.utils.utils import load_example_image_inputs
+from typing import List, Optional, Union
 
 
 class BaseEngineLoader(ABC):
@@ -25,7 +26,7 @@ class BaseEngineLoader(ABC):
         return EngineConfig.from_yaml(cfg_filepath)
 
     @abstractmethod
-    def load_example_inputs(self) -> list[np.ndarray]:
+    def load_example_inputs(self) -> List[np.ndarray]:
         raise NotImplementedError
 
     @abstractmethod
@@ -34,5 +35,5 @@ class BaseEngineLoader(ABC):
 
 
 class ImageModelEngineLoader(BaseEngineLoader):
-    def load_example_inputs(self) -> list[np.ndarray]:
+    def load_example_inputs(self) -> List[np.ndarray]:
         return load_example_image_inputs()

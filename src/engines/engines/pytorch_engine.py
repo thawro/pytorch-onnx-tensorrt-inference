@@ -5,6 +5,7 @@ from torch import nn
 from src.engines.config import EngineConfig
 from src.engines.engines.base import BaseInferenceEngine
 from src.monitoring.time import measure_time
+from typing import List, Optional, Union
 
 DEFAULT_DEVICE = "cuda"
 
@@ -16,7 +17,7 @@ class PyTorchInferenceEngine(BaseInferenceEngine):
         super().__init__(cfg)
         self.device = device
 
-    def load_module(self, torch_module: nn.Module, device: str | None):
+    def load_module(self, torch_module: nn.Module, device: Optional[str] = None):
         if device is None:
             device = self.device
         self.module = torch_module
@@ -57,12 +58,12 @@ class PyTorchInferenceEngine(BaseInferenceEngine):
         )
         torch.cuda.empty_cache()
 
-    def move_inputs_to_device(self, inputs: list[np.ndarray]):
+    def move_inputs_to_device(self, inputs: List[np.ndarray]):
         device = next(self.module.parameters()).device
         return [torch.from_numpy(inp).to(device) for inp in inputs]
 
     @measure_time(time_unit="ms", name="PyTorch")
-    def inference(self, inputs: list[np.ndarray]) -> list[np.ndarray]:
+    def inference(self, inputs: List[np.ndarray]) -> List[np.ndarray]:
         with torch.no_grad():
             preprocessed_inputs = self.preprocess_inputs(inputs)
             inputs_on_device = self.move_inputs_to_device(preprocessed_inputs)

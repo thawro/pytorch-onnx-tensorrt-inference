@@ -4,7 +4,7 @@ import cv2
 import numpy as np
 
 from src.engines.config import EngineConfig
-
+from typing import List, Optional, Union
 
 class BaseInferenceEngine:
     name: str
@@ -14,20 +14,20 @@ class BaseInferenceEngine:
         self.example_input_shapes = [inp.shapes.example for inp in cfg.inputs]
         self.dtypes = [inp.dtype for inp in cfg.inputs]
 
-    def inference(self, inputs: list[np.ndarray]) -> list[np.ndarray]:
+    def inference(self, inputs: List[np.ndarray]) -> List[np.ndarray]:
         raise NotImplementedError()
 
-    def _dummy_input(self, shape: list[int], dtype: np.dtype):
+    def _dummy_input(self, shape: List[int], dtype: np.dtype):
         return np.random.randn(*shape).astype(dtype)
 
     @property
-    def dummy_inputs(self) -> list[np.ndarray]:
+    def dummy_inputs(self) -> List[np.ndarray]:
         return [
             self._dummy_input(shape, dtype)
             for shape, dtype in zip(self.example_input_shapes, self.dtypes)
         ]
 
-    def preprocess_inputs(self, inputs: list[np.ndarray]) -> list[np.ndarray]:
+    def preprocess_inputs(self, inputs: List[np.ndarray]) -> List[np.ndarray]:
         image, *other = inputs
         h, w, c = self.example_input_shapes[0]
         image_arr = np.asarray(cv2.resize(image, (w, h))).transpose([2, 0, 1])
@@ -39,7 +39,7 @@ class BaseInferenceEngine:
             for i, inp in enumerate(inputs)
         ]
 
-    def move_inputs_to_device(self, inputs: list):
+    def move_inputs_to_device(self, inputs: List):
         raise NotImplementedError()
 
     def warmup(self, n: int):

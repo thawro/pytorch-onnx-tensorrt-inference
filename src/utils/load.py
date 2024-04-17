@@ -4,6 +4,7 @@ from torch import nn
 from src.engines.config import EngineConfig
 from src.loaders import *  # noqa
 from src.utils.utils import MODEL_LOADER_REGISTRY
+from typing import List, Optional, Union, Tuple
 
 
 def load_engine_cfg(model_name: str) -> EngineConfig:
@@ -22,7 +23,7 @@ def load_pytorch_module(model_name: str) -> nn.Module:
     return pytorch_module
 
 
-def load_example_inputs(model_name: str) -> list[np.ndarray]:
+def load_example_inputs(model_name: str) -> List[np.ndarray]:
     engine_loader = MODEL_LOADER_REGISTRY[model_name]
     example_inputs = engine_loader.load_example_inputs()
     return example_inputs
