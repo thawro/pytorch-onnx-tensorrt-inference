@@ -9,7 +9,7 @@ import pycuda.driver as cuda
 
 from src.engines.engines.base import BaseInferenceEngine
 from src.engines.engines.trt.memory import HostDeviceMem, allocate_buffers, free_buffers
-from src.engines.engines.trt.utils import TRT_MAJOR_VERSION, cuda_call
+from src.engines.engines.trt.utils import TRT_MAJOR_VERSION
 from src.monitoring.time import measure_time
 from typing import List, Optional, Union
 

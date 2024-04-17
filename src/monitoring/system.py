@@ -5,43 +5,45 @@ import threading
 from collections import defaultdict
 
 import psutil
-import pynvml
-from typing import List, Optional, Union
+from typing import List, Optional, Union, Dict
+from jtop import jtop
+
+
 
 MEMORY_MEASUREMENTS = defaultdict(lambda: defaultdict(list))
 CKPT_MEMORY_MEASUREMENTS = defaultdict(dict)
 
 
-def gather_system_metrics(gpu_handles: List) -> dict[str, float]:
-    metrics = {}
-    cpu_percent = psutil.cpu_percent()
-    cpu_memory = psutil.virtual_memory()
-    metrics["cpu_pct_util"] = cpu_percent
-    metrics["cpu_mb"] = cpu_memory.used / 1e6
-
-    for i, handle in enumerate(gpu_handles):
-        gpu_memory = pynvml.nvmlDeviceGetMemoryInfo(handle)
-        gpu_utilization = pynvml.nvmlDeviceGetUtilizationRates(handle)
-
-        metrics[f"gpu_{i}_mb"] = float(gpu_memory.used) / 1e6
-        metrics[f"gpu_{i}_pct_util"] = gpu_utilization.gpu
-    return metrics
+def gather_system_metrics() -> Dict[str, float]:
+	metrics = {}
+	cpu_percent = psutil.cpu_percent()
+	cpu_memory = psutil.virtual_memory()
+	metrics["cpu_pct_util"] = cpu_percent
+	metrics["cpu_mb"] = cpu_memory.used / 1e6
+	ram_used = -1
+	gpu_util = -1
+	with jtop() as jetson:
+		if jetson.ok():
+			stats = jetson.stats
+			gpu_memory_kb = stats['RAM']
+			temp_CPU = stats['Temp CPU']
+			temp_GPU = stats['Temp GPU']
+			power_cur = stats['power cur']
+			gpu_util = jetson.gpu['val']
+	metrics[f"gpu_mb"] = float(gpu_memory_kb) / 1e3
+	metrics[f"gpu_pct_util"] = gpu_util        
+	return metrics
 
 
 class SystemMetricsCollector:
     """Class for monitoring GPU stats."""
 
     def __init__(self):
-        pynvml.nvmlInit()
         self._metrics = defaultdict(list)
-        self.num_gpus = pynvml.nvmlDeviceGetCount()
-        self.gpu_handles = [
-            pynvml.nvmlDeviceGetHandleByIndex(i) for i in range(self.num_gpus)
-        ]
 
     @property
-    def current_metrics(self) -> dict[str, float]:
-        return gather_system_metrics(self.gpu_handles)
+    def current_metrics(self) -> Dict[str, float]:
+        return gather_system_metrics()
 
     def collect_metrics(self):
         for name, value in self.current_metrics.items():
@@ -54,7 +56,7 @@ class SystemMetricsCollector:
     def clear_metrics(self):
         self._metrics.clear()
 
-    def aggregate_metrics(self) -> dict[str, float]:
+    def aggregate_metrics(self) -> Dict[str, float]:
         return {k: round(sum(v) / len(v), 1) for k, v in self._metrics.items()}
 
 
@@ -134,7 +136,7 @@ class SystemMetricsMonitor:
         metrics = self.metrics_collector.aggregate_metrics()
         return metrics
 
-    def publish_metrics(self, metrics: dict[str, float]):
+    def publish_metrics(self, metrics: Dict[str, float]):
         """Do something with collected metrics and clear them."""
         for name, value in metrics.items():
             MEMORY_MEASUREMENTS[self.name][name].append(value)

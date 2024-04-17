@@ -3,7 +3,8 @@ import time
 from collections import defaultdict
 from functools import wraps
 from pathlib import Path
-from typing import Any, Callable, Literal, List, Optional, Union
+from typing import Any, Callable, List, Optional, Union
+from typing_extensions import Literal
 
 logging.basicConfig(level=logging.INFO)
 

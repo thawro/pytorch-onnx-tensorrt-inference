@@ -1,7 +1,6 @@
 from torch import nn
 from torchvision.models.resnet import (
-    ResNet50_Weights,
-    ResNet152_Weights,
+    resnet18,
     resnet50,
     resnet152,
 )
@@ -17,13 +16,22 @@ class BaseResnetEngineLoader(ImageModelEngineLoader):
         engine_cfg.name = self.name
         return engine_cfg
 
+@register_model
+class Resnet18EngineLoader(BaseResnetEngineLoader):
+    name = "resnet18"
+
+    def load_pytorch_module(self) -> nn.Module:
+        module = resnet18(pretrained=True)
+        module.fc = nn.Sequential(*[module.fc, nn.Softmax()])  # logits -> probs
+        module.eval()
+        return module
 
 @register_model
 class Resnet152EngineLoader(BaseResnetEngineLoader):
     name = "resnet152"
 
     def load_pytorch_module(self) -> nn.Module:
-        module = resnet152(weights=ResNet152_Weights.DEFAULT)
+        module = resnet152(pretrained=True)
         module.fc = nn.Sequential(*[module.fc, nn.Softmax()])  # logits -> probs
         module.eval()
         return module
@@ -34,7 +42,7 @@ class Resnet50EngineLoader(BaseResnetEngineLoader):
     name = "resnet50"
 
     def load_pytorch_module(self) -> nn.Module:
-        module = resnet50(weights=ResNet50_Weights.DEFAULT)
+        module = resnet50(pretrained=True)
         module.fc = nn.Sequential(*[module.fc, nn.Softmax()])  # logits -> probs
         module.eval()
         return module

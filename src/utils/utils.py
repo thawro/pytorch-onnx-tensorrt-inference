@@ -1,24 +1,18 @@
-from __future__ import annotations
-
 import glob
 import logging
-from typing import TYPE_CHECKING, Type
+from typing import Type
 
 import numpy as np
 import yaml
 from PIL import Image
-from typing import List, Optional, Union, Tuple
-
-if TYPE_CHECKING:
-    from src.engines.loader import BaseEngineLoader
+from typing import List, Optional, Union, Tuple, Dict
 
 
 EXAMPLE_IMAGES_FILEPATHS = glob.glob("examples/*")
-MODEL_LOADER_REGISTRY: dict[str, BaseEngineLoader] = {}
+MODEL_LOADER_REGISTRY = {}
 
 
-def register_model(cls: Type[BaseEngineLoader]):
-    print("=" * 100, cls)
+def register_model(cls: Type):
     MODEL_LOADER_REGISTRY[cls.name] = cls()
     return cls
 
