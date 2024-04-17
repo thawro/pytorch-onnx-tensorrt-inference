@@ -82,31 +82,33 @@ def test_onnx_engine(
 
 
 def test_trt_engine(
-    example_inputs: List[np.ndarray],
-    engine_cfg: EngineConfig,
-    device: str,
+	example_inputs: List[np.ndarray],
+	engine_cfg: EngineConfig,
+	device: str,
 ) -> List[Tuple]:
-    logging.info(" TensorRT ".center(120, "="))
-    if device != "cuda":
-        e = ValueError("TensorRT doesn't support CPU device. Returning None")
-        logging.exception(e)
-        return []
+	logging.info(" TensorRT ".center(120, "="))
+	if device != "cuda":
+		e = ValueError("TensorRT doesn't support CPU device. Returning None")
+		logging.exception(e)
+		return []
 
-    trt_engine = TensorRTInferenceEngine(engine_cfg)
-    system_monitor = SystemMetricsMonitor(name=trt_engine.name)
-    trt_engine.load_engine_from_trt(model_dirpath)
-    logging.info("Loaded Engine from TRT file")
-    system_monitor.checkpoint_metrics("loaded_engine")
-    input_cfg = engine_cfg.inputs[0]
-    h, w, c = input_cfg.shapes.example
-    context = trt_engine.create_context()
-    stream = trt_engine.create_stream()
-    context.set_optimization_profile_async(0, stream)
-    context.set_input_shape(input_cfg.name, (1, c, h, w))
-    trt_engine.allocate_buffers()
-    system_monitor.checkpoint_metrics("allocated_buffers")
-    outputs = run_inference_n_times(trt_engine, example_inputs, system_monitor)
-    return outputs
+	trt_engine = TensorRTInferenceEngine(engine_cfg)
+	system_monitor = SystemMetricsMonitor(name=trt_engine.name)
+	trt_engine.load_engine_from_trt(model_dirpath)
+	logging.info("Loaded Engine from TRT file")
+	system_monitor.checkpoint_metrics("loaded_engine")
+	input_cfg = engine_cfg.inputs[0]
+	h, w, c = input_cfg.shapes.example
+	context = trt_engine.create_context()
+	stream = trt_engine.create_stream()
+	context.set_optimization_profile_async(0, stream.handle)
+	binding_idx = trt_engine.engine.get_binding_index(input_cfg.name)
+	context.set_binding_shape(binding_idx, (1, c, h, w))
+	context.set_shape_input(binding_idx, (1, c, h, w))
+	trt_engine.allocate_buffers()
+	system_monitor.checkpoint_metrics("allocated_buffers")
+	outputs = run_inference_n_times(trt_engine, example_inputs, system_monitor)
+	return outputs
 
 
 if __name__ == "__main__":

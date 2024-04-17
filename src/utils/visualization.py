@@ -79,7 +79,7 @@ def plot_measurements(
     cuda_memory_measurements,
 ):
     Path(dirpath).mkdir(exist_ok=True, parents=True)
-    gpu_stats_names = ["gpu_0_mb", "gpu_0_pct_util"]
+    gpu_stats_names = ["gpu_mb", "gpu_pct_util"]
     cpu_stats_names = ["cpu_mb", "cpu_pct_util"]
     plot_memory_measurements(cpu_memory_measurements, cpu_stats_names, dirpath)
     plot_memory_measurements(cuda_memory_measurements, gpu_stats_names, dirpath)

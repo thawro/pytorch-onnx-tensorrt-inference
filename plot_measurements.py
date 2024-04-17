@@ -23,8 +23,8 @@ if __name__ == "__main__":
 
     all_example_inputs_shapes = next(os.walk(results_dirpath))[1]
     names = [
-        PyTorchInferenceEngine.name,
-        ONNXInferenceEngine.name,
+        #PyTorchInferenceEngine.name,
+        #ONNXInferenceEngine.name,
         TensorRTInferenceEngine.name,
     ]
     for example_inputs_shapes in all_example_inputs_shapes:

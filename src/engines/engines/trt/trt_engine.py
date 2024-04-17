@@ -19,7 +19,7 @@ TRT_LOGGER = trt.Logger(trt.Logger.INFO)
 dtypes = {np.float32: trt.float32}
 
 
-def _do_inference_base(inputs, outputs, stream, execute_async_func):
+def _do_inference_base(inputs: List[HostDeviceMem], outputs: List[HostDeviceMem], stream: cuda.Stream, execute_async_func):
     # Transfer input data to the GPU.
     for inp in inputs:
         cuda.memcpy_htod_async(inp.device, inp.host, stream)
@@ -54,10 +54,6 @@ def do_inference(
             context.execute_async_v2(bindings=bindings, stream_handle=stream.handle)
         else:
             context.execute_async(bindings=bindings, stream_handle=stream.handle)
-
-    # Setup context tensor address.
-    for i in range(engine.num_io_tensors):
-        context.set_tensor_address(engine.get_tensor_name(i), bindings[i])
     return _do_inference_base(inputs, outputs, stream, execute_async_func)
 
 
